@@ -20,14 +20,35 @@
 * Then visit [PCL Docs](https://pcl.readthedocs.io/projects/tutorials/en/latest/compiling_pcl_posix.html) to build and install PCL.
 ## 2. Install igraph
 * Tutorials of install igraph can be found at [igraph Reference Manual](https://igraph.org/c/doc/igraph-Installation.html).
+```
+# Tested in Ubuntu 20.04
+
+# download the latest cmake for 3D MAC. igraph 0.9.9 is satisfied with cmake 3.16.
+wget https://github.com/Kitware/CMake/releases/download/v3.27.4/cmake-3.27.4-linux-x86_64.tar.gz
+tar -zxvf cmake-3.27.4-linux-x86_64.tar.gz -C /home/jhuai/Documents/slam_devel
+
+# install components for cmake 3.27.4
+sudo apt-get install -y bison flex # Unknown CMake command "bison_target", "flex_target".
+
+git clone --recursive git@github.com:igraph/igraph.git
+cd igraph
+git checkout tags/0.9.9
+mkdir build && cd build
+
+/home/jhuai/Documents/slam_devel/cmake-3.27.4-linux-x86_64/bin/cmake .. -DCMAKE_INSTALL_PREFIX=/home/jhuai/Documents/slam_devel
+make -j4
+make install
+
+```
+
 ## 3. Build MAC
 - Option 1 (purely on the command line): Use CMake to generate Makefiles and then `make`.
     - You can simply run
       ```
-      $ cd path-to-root-dir-of-MAC
+      $ cd Linux
       $ mkdir Release
       $ cd Release
-      $ cmake -DCMAKE_BUILD_TYPE=Release ..
+      $ /home/jhuai/Documents/slam_devel/cmake-3.27.4-linux-x86_64/bin/cmake .. -DCMAKE_BUILD_TYPE=Release -Digraph_DIR=/home/jhuai/Documents/slam_devel/lib/cmake/igraph
       $ make
       ```
 - Option 2: Use any IDE that can directly handle CMakeLists files to open the `CMakeLists.txt` in the **root** directory of MAC. Then you should have obtained a usable project and just build it. I recommend using [CLion](https://www.jetbrains.com/clion/).
