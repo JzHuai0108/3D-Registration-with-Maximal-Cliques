@@ -95,7 +95,6 @@ Eigen::MatrixXf Graph_construction(vector<Corre_3DMatch>& correspondence, float 
 				score = (score < thresh) ? 0 : score;//fcgf 0.9999 fpfh 0.9
 				cmp_score(i, j) = score;
 				cmp_score(j, i) = score;
-
 			}
 		}
 	}
@@ -909,6 +908,7 @@ Eigen::VectorXf power_iteration(Eigen::MatrixXf& Graph, int iteration) {
 void savetxt(vector<Corre_3DMatch>corr, const string& save_path) {
 	ofstream outFile;
 	outFile.open(save_path.c_str(), ios::out);
+	std::cout << "outFile" << std::endl;
 	for (auto & i : corr)
 	{
 		outFile << i.src_index << " " << i.des_index << endl;

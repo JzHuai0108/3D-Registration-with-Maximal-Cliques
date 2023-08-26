@@ -1372,3 +1372,347 @@ bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>&
     des_corr_pts.reset(new pcl::PointCloud<pcl::PointXYZ>);
     return true;
 }
+
+bool coloradar_registration(PointCloudPtr &src, PointCloudPtr &des, vector<Corre_3DMatch> &correspondence, vector<double> &ov_corr_label,
+							Eigen::Matrix4d &transform, string folderPath, float resolution, float cmp_thresh, double &best_score)
+{
+	bool sc2 = true;
+	bool GT_cmp_mode = false;
+	int max_est_num = INT_MAX;
+	string metric = "MAE";
+	string descriptor = "NULL";
+	string name = "test";
+	int total_num = correspondence.size();
+	if (access(folderPath.c_str(), 0))
+	{
+		if (mkdir(folderPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0)
+		{
+			cout << " 创建数据项目录失败 " << endl;
+			exit(-1);
+		}
+	}
+
+	// std::cout << "begin " << std::endl;
+	std::chrono::time_point<std::chrono::system_clock> start, end;
+    std::chrono::duration<double> elapsed_time, total_time;
+    start = std::chrono::system_clock::now();
+
+    std::time_t start_time = std::chrono::system_clock::to_time_t(start);
+    // std::cout << "start times: " << std::ctime(&start_time) << std::endl;
+
+    Eigen::MatrixXf Graph = Graph_construction(correspondence, resolution, sc2, cmp_thresh);
+    std::cout << "graph size:" << Graph.size() << std::endl;
+    end = std::chrono::system_clock::now();
+    elapsed_time = end - start;
+    total_time += elapsed_time;
+    cout << " graph construction: " << elapsed_time.count() << endl;
+    if (Graph.norm() == 0) {
+        return false;
+    }
+
+    vector<int>degree(total_num, 0);
+    vector<Vote_exp> pts_degree;
+    for (int i = 0; i < total_num; i++)
+    {
+        Vote_exp t;
+        t.true_num = 0;
+        vector<int> corre_index;
+        for (int j = 0; j < total_num; j++)
+        {
+            if (i != j && Graph(i, j)) {
+                degree[i] ++;
+                corre_index.push_back(j);
+            }
+        }
+        t.index = i;
+        t.degree = degree[i];
+        t.corre_index = corre_index;
+        pts_degree.push_back(t);
+    }
+
+    start = std::chrono::system_clock::now();
+    vector<Vote> cluster_factor;
+    double sum_fenzi = 0;
+    double sum_fenmu = 0;
+    omp_set_num_threads(12);
+    for (int i = 0; i < total_num; i++)
+    {
+        Vote t;
+        double sum_i = 0;
+        double wijk = 0;
+        int index_size = pts_degree[i].corre_index.size();
+#pragma omp parallel
+        {
+#pragma omp for
+            for (int j = 0; j < index_size; j++)
+            {
+                int a = pts_degree[i].corre_index[j];
+                for (int k = j + 1; k < index_size; k++)
+                {
+                    int b = pts_degree[i].corre_index[k];
+                    if (Graph(a, b)) {
+#pragma omp critical
+                        wijk += pow(Graph(i, a) * Graph(i, b) * Graph(a, b), 1.0 / 3); //wij + wik
+                    }
+                }
+            }
+        }
+
+        if (degree[i] > 1)
+        {
+            double f1 = wijk;
+            double f2 = degree[i] * (degree[i] - 1) * 0.5;
+            sum_fenzi += f1;
+            sum_fenmu += f2;
+            double factor = f1 / f2;
+            t.index = i;
+            t.score = factor;
+            cluster_factor.push_back(t);
+        }
+        else {
+            t.index = i;
+            t.score = 0;
+            cluster_factor.push_back(t);
+        }
+    }
+    end = std::chrono::system_clock::now();
+    elapsed_time = end - start;
+    cout << " coefficient computation: " << elapsed_time.count() << endl;
+    double average_factor = 0;
+    for (size_t i = 0; i < cluster_factor.size(); i++)
+    {
+        average_factor += cluster_factor[i].score;
+    }
+    average_factor /= cluster_factor.size();
+
+    double total_factor = sum_fenzi / sum_fenmu;
+
+    vector<Vote_exp> pts_degree_bac;
+    vector<Vote>cluster_factor_bac;
+    pts_degree_bac.assign(pts_degree.begin(), pts_degree.end());
+    cluster_factor_bac.assign(cluster_factor.begin(), cluster_factor.end());
+
+    sort(cluster_factor.begin(), cluster_factor.end(), compare_vote_score);
+    sort(pts_degree.begin(), pts_degree.end(), compare_vote_degree);
+
+    Eigen::VectorXd cluster_coefficients;
+    cluster_coefficients.resize(cluster_factor.size());
+    for (size_t i = 0; i < cluster_factor.size(); i++)
+    {
+        cluster_coefficients[i] = cluster_factor[i].score;
+    }
+
+    int cnt = 0;
+    double OTSU = 0;
+    if (cluster_factor[0].score != 0)
+    {
+        OTSU = OTSU_thresh(cluster_coefficients);
+    }
+    double cluster_threshold = min(OTSU, min(average_factor, total_factor));
+
+    cout << cluster_threshold << "->min(" << average_factor << " " << total_factor << " " << OTSU << ")" << endl;
+    double weight_thresh = cluster_threshold;
+    if (add_overlap)
+    {
+        weight_thresh = 0.5;
+    }
+    else {
+        weight_thresh = 0;
+    }
+
+    //匹配置信度评分
+    if (!add_overlap)
+    {
+        for (size_t i = 0; i < total_num; i++)
+        {
+            correspondence[i].score = cluster_factor_bac[i].score;
+        }
+    }
+    /*****************************************igraph**************************************************/
+    igraph_t g;
+    igraph_matrix_t g_mat;
+    igraph_vector_t weights;
+    igraph_vector_init(&weights, Graph.rows() * (Graph.cols() - 1) / 2);
+    igraph_matrix_init(&g_mat, Graph.rows(), Graph.cols());
+
+    if (cluster_threshold > 3 && correspondence.size() > 100 /*max(OTSU, total_factor) > 0.3*/) //减少图规模
+    {
+        double f = 10;
+        while (1)
+        {
+            if (f * max(OTSU, total_factor) > cluster_factor[99].score)
+            {
+                f -= 0.05;
+            }
+            else {
+                break;
+            }
+        }
+        for (int i = 0; i < Graph.rows(); i++)
+        {
+            if (cluster_factor_bac[i].score > f * max(OTSU, total_factor))
+            {
+                for (int j = i + 1; j < Graph.cols(); j++)
+                {
+                    if (cluster_factor_bac[j].score > f * max(OTSU, total_factor))
+                    {
+                        MATRIX(g_mat, i, j) = Graph(i, j);
+                    }
+                }
+            }
+        }
+    }
+    else {
+        for (int i = 0; i < Graph.rows(); i++)
+        {
+            for (int j = i + 1; j < Graph.cols(); j++)
+            {
+                if (Graph(i, j))
+                {
+                    MATRIX(g_mat, i, j) = Graph(i, j);
+                }
+            }
+        }
+    }
+
+    igraph_set_attribute_table(&igraph_cattribute_table);
+    igraph_weighted_adjacency(&g, &g_mat, IGRAPH_ADJ_UNDIRECTED, 0, 1);
+    const char* att = "weight";
+    EANV(&g, att, &weights);
+
+    //找出所有最大团
+    igraph_vector_ptr_t cliques;
+    igraph_vector_ptr_init(&cliques, 0);
+    start = std::chrono::system_clock::now();
+
+    igraph_maximal_cliques(&g, &cliques, 3, 0); //3dlomatch 4 3dmatch; 3 Kitti  4
+    //igraph_largest_cliques(&g, &cliques);
+    end = std::chrono::system_clock::now();
+    elapsed_time = end - start;
+    total_time += elapsed_time;
+    //print_and_destroy_cliques(&cliques);
+    int clique_num = igraph_vector_ptr_size(&cliques);
+    if (clique_num == 0) {
+        cout << " NO CLIQUES! " << endl;
+    }
+    cout << " clique computation: " << elapsed_time.count() << endl;
+
+    //数据清理
+    igraph_destroy(&g);
+    igraph_matrix_destroy(&g_mat);
+    igraph_vector_destroy(&weights);
+
+    vector<int>remain;
+    start = std::chrono::system_clock::now();
+    for (int i = 0; i < clique_num; i++)
+    {
+        remain.push_back(i);
+    }
+    node_cliques* N_C = new node_cliques[(int)total_num];
+    find_largest_clique_of_node(Graph, &cliques, correspondence, N_C, remain, total_num, max_est_num, descriptor);
+    end = std::chrono::system_clock::now();
+    elapsed_time = end - start;
+    total_time += elapsed_time;
+    cout << " clique selection: " << elapsed_time.count() << endl;
+
+    PointCloudPtr src_corr_pts(new pcl::PointCloud<pcl::PointXYZ>);
+    PointCloudPtr des_corr_pts(new pcl::PointCloud<pcl::PointXYZ>);
+    for (size_t i = 0; i < correspondence.size(); i++) {
+        src_corr_pts->push_back(correspondence[i].src);
+        des_corr_pts->push_back(correspondence[i].des);
+    }
+
+    /******************************************配准部分***************************************************/
+    double RE_thresh, TE_thresh, inlier_thresh;
+    Eigen::Matrix4d best_est;
+    inlier_thresh = 0.1;
+    bool found = false;
+    // double best_score = 0;
+    vector<Corre_3DMatch>selected;
+    vector<int>corre_index;
+    start = std::chrono::system_clock::now();
+    int total_estimate = remain.size();
+#pragma omp parallel for
+    for (int i = 0; i < remain.size(); i++)
+    {
+        vector<Corre_3DMatch>Group;
+        vector<int>selected_index;
+        igraph_vector_t* v = (igraph_vector_t*)VECTOR(cliques)[remain[i]];
+        int group_size = igraph_vector_size(v);
+        for (int j = 0; j < group_size; j++)
+        {
+            Corre_3DMatch C = correspondence[VECTOR(*v)[j]];
+            Group.push_back(C);
+            selected_index.push_back(VECTOR(*v)[j]);
+        }
+        //igraph_vector_destroy(v);
+        Eigen::Matrix4d est_trans;
+        //团结构评分
+        double score = evaluation_trans(Group, correspondence, src_corr_pts, des_corr_pts, weight_thresh, est_trans, inlier_thresh, metric,resolution,
+                                        true);
+
+        //GT未知
+        if (score > 0)
+        {
+#pragma omp critical
+            {
+                if (best_score < score)
+                {
+                    best_score = score;
+                    best_est = est_trans;
+                    selected = Group;
+                    corre_index = selected_index;
+                }
+            }
+        }
+    }
+    end = std::chrono::system_clock::now();
+    elapsed_time = end - start;
+    total_time += elapsed_time;
+    cout << " hypothesis generation & evaluation: " << elapsed_time.count() << endl;
+    //释放内存空间
+    igraph_vector_ptr_destroy(&cliques);
+    // cout << total_estimate << " : " << clique_num << endl;
+    Eigen::MatrixXd tmp_best;
+
+    tmp_best = best_est;
+    transform = best_est;
+    post_refinement(correspondence, src_corr_pts, des_corr_pts, best_est, best_score, inlier_thresh, 20, "MAE");
+
+    cout << "selected_size:" << selected.size() << endl;
+
+    // for (int i = 0; i < selected.size(); i++)
+    // {
+    //     cout << selected[i].score << " ";
+    // }
+    // cout << endl;
+    cout << " total_time: " << total_time.count() << endl;
+
+    // Corres_Viewer_Score(src, des, selected, resolution, (int)selected.size());
+    // displayResult(src, des, best_est, resolution);
+
+    correspondence.clear();
+    correspondence.shrink_to_fit();
+    ov_corr_label.clear();
+    ov_corr_label.shrink_to_fit();
+    degree.clear();
+    degree.shrink_to_fit();
+    pts_degree.clear();
+    pts_degree.shrink_to_fit();
+    pts_degree_bac.clear();
+    pts_degree_bac.shrink_to_fit();
+    cluster_factor.clear();
+    cluster_factor.shrink_to_fit();
+    cluster_factor_bac.clear();
+    cluster_factor_bac.shrink_to_fit();
+    delete[] N_C;
+    remain.clear();
+    remain.shrink_to_fit();
+    selected.clear();
+    selected.shrink_to_fit();
+    corre_index.clear();
+    corre_index.shrink_to_fit();
+    src_corr_pts.reset(new pcl::PointCloud<pcl::PointXYZ>);
+    des_corr_pts.reset(new pcl::PointCloud<pcl::PointXYZ>);
+    return true;
+}

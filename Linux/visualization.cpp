@@ -145,6 +145,66 @@ void cloud_viewer_src_des(PointCloudPtr cloud_src, PointCloudPtr cloud_des) {
 	}
 }
 
+// show visualization result
+void displayResult(PointCloudPtr cloud_src, PointCloudPtr cloud_tar, /*PointCloudPtr keyPoint_src, PointCloudPtr keyPoint_tar,*/ Eigen::Matrix4d Mat, float resolution)
+{
+	//cout << "visu resolution=" << resolution << endl;
+	//visulization
+	pcl::visualization::PCLVisualizer viewer("Registration");
+	pcl::visualization::PointCloudColorHandlerCustom< pcl::PointXYZ> cloud_color_handler_src(cloud_src, sR, sG, sB);
+	pcl::visualization::PointCloudColorHandlerCustom< pcl::PointXYZ> cloud_color_handler_tar(cloud_tar, tR, tG, tB);
+	//pcl::visualization::PointCloudColorHandlerCustom< pcl::PointXYZ> keyPoint_color_handler_src(keyPoint_src, 0, 255, 0);
+	//pcl::visualization::PointCloudColorHandlerCustom< pcl::PointXYZ> keyPoint_color_handler_tar(keyPoint_tar, 255, 185, 15);
+	//Add pointcloud
+	viewer.addPointCloud(cloud_src, cloud_color_handler_src, "cloud_src");
+	viewer.addPointCloud(cloud_tar, cloud_color_handler_tar, "cloud_tar");
+	//Add keyPoint
+	//viewer.addPointCloud(keyPoint_src, keyPoint_color_handler_src, "keyPoint_src");
+	//viewer.addPointCloud(keyPoint_tar, keyPoint_color_handler_tar, "keyPoint_tar");
+	//viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "keyPoint_src");
+	//viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 3, "keyPoint_tar");
+	//for (size_t j = 0; j < match.size(); ++j)
+	//{
+	//	int idx1 = match[j].source_idx;
+	//	int idx2 = match[j].target_idx;
+	//	std::stringstream SS_line_b;
+	//	SS_line_b << "line" << j;
+	//	viewer.addLine< pcl::PointXYZ, pcl::PointXYZ>(cloud_src->points[idx1], cloud_tar->points[idx2], 0, 255, 0, SS_line_b.str());
+	//}
+	//viewer.addSphere<pcl::PointXYZ>(cloud_src->points[500], 5 * resolution, "sphere", 0);
+	viewer.setBackgroundColor(0, 0, 0);
+    viewer.addText("Before registration\n", 10, 15, 20, 255, 255, 255, "info_1");
+	viewer.setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud_src");
+
+	// Set camera position and orientation
+	//viewer.setCameraPosition(-3.68332, 2.94092, 5.71266, 0.289847, 0.921947, -0.256907, 0);
+	//viewer.setSize(1280, 1024);
+	//transform
+	// viewer.registerKeyboardCallback(&keyboardEventOccurred, (void*)NULL);
+	next_iteration = true;
+	while (next_iteration)
+	{
+		viewer.spinOnce();
+		//transform
+		if (next_iteration)
+		{
+			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_trans_src(new pcl::PointCloud<pcl::PointXYZ>);
+			viewer.removeAllShapes();
+			viewer.removePointCloud("cloud_src");
+            viewer.updateText("After registration\n", 10, 15, 20, 255, 255, 255, "info_1");
+			pcl::transformPointCloud(*cloud_src, *cloud_trans_src, Mat);
+			viewer.addPointCloud(cloud_trans_src, cloud_color_handler_src, "cloud_trans_src");
+			//viewer.removePointCloud("keyPoint_src");
+			//viewer.removePointCloud("keyPoint_tar");
+			//viewer.addSphere<pcl::PointXYZ>(cloud_src->points[500], 5 * resolution, "sphere", 0);
+			this_thread::sleep_for(300ms);
+		}
+		next_iteration = false;
+	}
+	viewer.close();
+	//system("pause");
+}
+
 //registration result
 void visualization(PointCloudPtr cloud_src, PointCloudPtr cloud_tar, /*PointCloudPtr keyPoint_src, PointCloudPtr keyPoint_tar,*/ Eigen::Matrix4d Mat, float resolution)
 {
