@@ -202,7 +202,7 @@ void alignTwoSeqs(const std::string &base_dir, const std::string &query_dir) {
             cout<<"best_score:"<<best_score<< endl;
             outFile << base_pcd << " " << query_pcd << " " << best_score << endl;
 
-            if (best_score > 5){
+            if (best_score > 30){
                 std::cout << "start assignToClosestTransform" <<std::endl;
                 assignToClosestTransform(grouped_transforms, transform, base_pcd, query_pcd);
             }
