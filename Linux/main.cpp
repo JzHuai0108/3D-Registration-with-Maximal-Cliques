@@ -158,6 +158,7 @@ void demo(){
     folderPath = "demo/result";
     cout << "Start registration." << endl;
     registration(src_cloud, des_cloud, correspondence, ov_lable, folderPath, resolution,0.99);
+	cout << "Registration done!" << endl;
     //clear data
     src_cloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
     des_cloud.reset(new pcl::PointCloud<pcl::PointXYZ>);

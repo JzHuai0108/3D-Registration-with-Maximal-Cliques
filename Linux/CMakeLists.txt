@@ -34,5 +34,7 @@ target_link_libraries(MAC ${PCL_LIBRARIES} igraph::igraph)
 
 add_library(maclib desc_dec.cpp funcs.cpp PCR.cpp registration.cpp visualization.cpp Eva.h)
 target_link_libraries(maclib ${PCL_LIBRARIES} igraph::igraph)
+
 add_executable(align_coloradar align_coloradar_seqs.cpp)
 target_link_libraries(align_coloradar ${catkin_LIBRARIES} maclib)
+
