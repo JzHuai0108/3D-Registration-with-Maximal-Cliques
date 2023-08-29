@@ -259,25 +259,22 @@ int main(int argc, char** argv) {
     std::cout<< "pcd_dir:" << pcd_dir << std::endl;
     std::vector<std::vector<std::string>> groups = {
         {
-        "edgar_classroom_run0", "edgar_classroom_run1",
-        },
-        // {
-        // "edgar_classroom_run0", "edgar_classroom_run1", "edgar_classroom_run2", "edgar_classroom_run3","edgar_classroom_run4", "edgar_classroom_run5",
-        // }, {
-        // "ec_hallways_run0", "ec_hallways_run1", "ec_hallways_run2", "ec_hallways_run3", "ec_hallways_run4",
-        // }, {
-        // "arpg_lab_run0", "arpg_lab_run1", "arpg_lab_run2", "arpg_lab_run3", "arpg_lab_run4",
-        // }, {
-        // "outdoors_run0", "outdoors_run1", "outdoors_run2", "outdoors_run3", "outdoors_run4", "outdoors_run5", 
-        // "outdoors_run6", "outdoors_run7","outdoors_run8","outdoors_run9",
-        // },{
-        // "aspen_run0", "aspen_run1", "aspen_run2", "aspen_run3", "aspen_run4", "aspen_run5", "aspen_run6",
-        // "aspen_run7", "aspen_run8", "aspen_run9", "aspen_run10", "aspen_run11",
-        // },{
-        // "edgar_army_run0", "edgar_army_run1", "edgar_army_run2", "edgar_army_run3", "edgar_army_run4", "edgar_army_run5",
-        // },{
-        // "longboard_run0", "longboard_run1", "longboard_run2", "longboard_run3", "longboard_run4", "longboard_run5","longboard_run6", "longboard_run7", "longboard_run8",
-        // },   
+        "edgar_classroom_run0", "edgar_classroom_run1", "edgar_classroom_run2", "edgar_classroom_run3","edgar_classroom_run4", "edgar_classroom_run5",
+        }, {
+        "ec_hallways_run0", "ec_hallways_run1", "ec_hallways_run2", "ec_hallways_run3", "ec_hallways_run4",
+        }, {
+        "arpg_lab_run0", "arpg_lab_run1", "arpg_lab_run2", "arpg_lab_run3", "arpg_lab_run4",
+        }, {
+        "outdoors_run0", "outdoors_run1", "outdoors_run2", "outdoors_run3", "outdoors_run4", "outdoors_run5", 
+        "outdoors_run6", "outdoors_run7","outdoors_run8","outdoors_run9",
+        },{
+        "aspen_run0", "aspen_run1", "aspen_run2", "aspen_run3", "aspen_run4", "aspen_run5", "aspen_run6",
+        "aspen_run7", "aspen_run8", "aspen_run9", "aspen_run10", "aspen_run11",
+        },{
+        "edgar_army_run0", "edgar_army_run1", "edgar_army_run2", "edgar_army_run3", "edgar_army_run4", "edgar_army_run5",
+        },{
+        "longboard_run0", "longboard_run1", "longboard_run2", "longboard_run3", "longboard_run4", "longboard_run5","longboard_run6", "longboard_run7", "longboard_run8",
+        },   
     };
 
     if (has_pcd == false){

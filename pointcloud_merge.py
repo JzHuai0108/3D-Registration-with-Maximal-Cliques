@@ -179,15 +179,3 @@ if __name__ == '__main__':
         # save transformed query pcd
         save_pcd_Ws_path = args.savepath + seq_name + "_Ws.pcd"
         o3d.io.write_point_cloud(save_pcd_Ws_path, pcd_in_Wb)
-
-
-
-
-
-
-
-
-
-
-
-
