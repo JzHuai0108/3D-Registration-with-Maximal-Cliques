@@ -257,6 +257,9 @@ int main(int argc, char** argv) {
     std::string rosbag_dir = argv[1];
     std::string pcd_dir = argv[2];
     std::cout<< "pcd_dir:" << pcd_dir << std::endl;
+    add_overlap = false;
+    low_inlieratio = false;
+    no_logs = false;
     std::vector<std::vector<std::string>> groups = {
         {
         "edgar_classroom_run0", "edgar_classroom_run1", "edgar_classroom_run2", "edgar_classroom_run3","edgar_classroom_run4", "edgar_classroom_run5",
