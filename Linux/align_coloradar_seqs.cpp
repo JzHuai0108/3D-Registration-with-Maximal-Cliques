@@ -26,7 +26,6 @@ namespace Eigen {
 template <typename Type>
 using AlignedVector = std::vector<Type, Eigen::aligned_allocator<Type>>;
 }
-string folderPath;
 bool add_overlap;
 bool low_inlieratio;
 bool no_logs;
@@ -90,10 +89,8 @@ void convertRosbagToPcd(const std::string& rosbag_dir, const std::vector<std::ve
 std::pair<double, double> dist(const Eigen::Matrix4d &t1, const Eigen::Matrix4d &t2) {
     // return the distance between two transformations
     Eigen::Matrix4d t = t1.inverse() * t2;
-    // std::cout << "t1: " << t1 << "\n" << "t2:" << t2 << std::endl;
     Eigen::Vector3d r = t.block<3, 1>(0, 3);
     Eigen::Matrix3d q = t.block<3, 3>(0, 0);
-    // std::cout << "r: " << r << ", " << "q:" << q << std::endl;
     Eigen::AngleAxisd aa(q);
     return std::make_pair(r.norm(), aa.angle());
 }
@@ -107,10 +104,9 @@ void assignToClosestTransform(Eigen::AlignedVector<Eigen::AlignedVector<Eigen::M
         std::cout << "d: " << d.first << ", " << d.second << std::endl;
         if (d.first < 0.1 && d.second < 0.05) {
             g = &group - &grouped_transforms[0];
-            ofstream outFile("../result/d_values.txt", ios::app);
+            ofstream outFile("../result/d_values.txt", ios::out);
             outFile << "base:" << basepcd << " query:" << querypcd << " "
                     << "d: " << d.first << ", " << d.second << " g:" << g<< std::endl;
-            outFile.close();
             break;
         }
     }
@@ -127,7 +123,7 @@ bool foundCorrectTransform(const Eigen::AlignedVector<Eigen::AlignedVector<Eigen
                            auto basepcd, auto querypcd)
 {
     for (auto &group : grouped_transforms) {
-        if (group.size() > 25) {
+        if (group.size() >50) {
             std::cout << "found correct transform" << std::endl;
             std::cout << "group[0]: \n" << group[0] << std::endl;
             std::ofstream outFile("../result/group0.txt");
@@ -193,7 +189,7 @@ void alignTwoSeqs(const std::string &base_dir, const std::string &query_dir) {
             vector<double> ov_lable;
             ov_lable.resize((int)correspondence.size());
 
-            folderPath = "../result";
+            string folderPath = "../result";
             double best_score = 0;
             cout << "Start registration." << endl;
             coloradar_registration(query_cloud, base_cloud, correspondence, ov_lable,
@@ -263,22 +259,25 @@ int main(int argc, char** argv) {
     std::cout<< "pcd_dir:" << pcd_dir << std::endl;
     std::vector<std::vector<std::string>> groups = {
         {
-        "edgar_classroom_run0", "edgar_classroom_run1", "edgar_classroom_run2", "edgar_classroom_run3","edgar_classroom_run4", "edgar_classroom_run5",
-        }, {
-        "ec_hallways_run0", "ec_hallways_run1", "ec_hallways_run2", "ec_hallways_run3", "ec_hallways_run4",
-        }, {
-        "arpg_lab_run0", "arpg_lab_run1", "arpg_lab_run2", "arpg_lab_run3", "arpg_lab_run4",
-        }, {
-        "outdoors_run0", "outdoors_run1", "outdoors_run2", "outdoors_run3", "outdoors_run4", "outdoors_run5", 
-        "outdoors_run6", "outdoors_run7","outdoors_run8","outdoors_run9",
-        },{
-        "aspen_run0", "aspen_run1", "aspen_run2", "aspen_run3", "aspen_run4", "aspen_run5", "aspen_run6",
-        "aspen_run7", "aspen_run8", "aspen_run9", "aspen_run10", "aspen_run11",
-        },{
-        "edgar_army_run0", "edgar_army_run1", "edgar_army_run2", "edgar_army_run3", "edgar_army_run4", "edgar_army_run5",
-        },{
-        "longboard_run0", "longboard_run1", "longboard_run2", "longboard_run3", "longboard_run4", "longboard_run5","longboard_run6", "longboard_run7", "longboard_run8",
-        },   
+        "edgar_classroom_run0", "edgar_classroom_run1",
+        },
+        // {
+        // "edgar_classroom_run0", "edgar_classroom_run1", "edgar_classroom_run2", "edgar_classroom_run3","edgar_classroom_run4", "edgar_classroom_run5",
+        // }, {
+        // "ec_hallways_run0", "ec_hallways_run1", "ec_hallways_run2", "ec_hallways_run3", "ec_hallways_run4",
+        // }, {
+        // "arpg_lab_run0", "arpg_lab_run1", "arpg_lab_run2", "arpg_lab_run3", "arpg_lab_run4",
+        // }, {
+        // "outdoors_run0", "outdoors_run1", "outdoors_run2", "outdoors_run3", "outdoors_run4", "outdoors_run5", 
+        // "outdoors_run6", "outdoors_run7","outdoors_run8","outdoors_run9",
+        // },{
+        // "aspen_run0", "aspen_run1", "aspen_run2", "aspen_run3", "aspen_run4", "aspen_run5", "aspen_run6",
+        // "aspen_run7", "aspen_run8", "aspen_run9", "aspen_run10", "aspen_run11",
+        // },{
+        // "edgar_army_run0", "edgar_army_run1", "edgar_army_run2", "edgar_army_run3", "edgar_army_run4", "edgar_army_run5",
+        // },{
+        // "longboard_run0", "longboard_run1", "longboard_run2", "longboard_run3", "longboard_run4", "longboard_run5","longboard_run6", "longboard_run7", "longboard_run8",
+        // },   
     };
 
     if (has_pcd == false){
