@@ -156,6 +156,7 @@ void RANSAC_trans_est(pcl::PointXYZ& point_s1, pcl::PointXYZ& point_s2, pcl::Poi
 	pcl::PointXYZ& point_t1, pcl::PointXYZ& point_t2, pcl::PointXYZ& point_t3, Eigen::Matrix4f& Mat);
 
 /**********************************************Visualization***************************************/
+void displayResult(PointCloudPtr cloud_src, PointCloudPtr cloud_tar, /*PointCloudPtr keyPoint_src, PointCloudPtr keyPoint_tar,*/ Eigen::Matrix4d Mat, float resolution);
 void visualization(PointCloudPtr cloud_src, PointCloudPtr cloud_tar, /*PointCloudPtr keyPoint_src, PointCloudPtr keyPoint_tar,*/ Eigen::Matrix4d Mat, float resolution);
 void visualization(PointCloudPtr &cloud_src, PointCloudPtr &cloud_tar, vector<Corre_3DMatch>&match, Eigen::Matrix4d &Mat, float &resolution);
 void visualization(PointCloudPtr& ov_src, PointCloudPtr& cloud_src, PointCloudPtr& cloud_tar, vector<Corre_3DMatch>& match, Eigen::Matrix4d& Mat, Eigen::Matrix4d& GTmat, float& resolution);
@@ -186,6 +187,8 @@ void find_largest_clique_of_node(Eigen::MatrixXf& Graph, igraph_vector_ptr_t* cl
 void post_refinement(vector<Corre_3DMatch>& correspondence, PointCloudPtr& src_corr_pts, PointCloudPtr& des_corr_pts, Eigen::Matrix4d& initial, double& best_score, double inlier_thresh, int iterations, const string &metric);
 bool registration(const string &name,string src_pointcloud, string des_pointcloud,const string &corr_path, const string &label_path, const string &ov_label, const string &gt_mat, const string &folderPath, double& RE, double& TE, double& inlier_num, double& total_num, double& inlier_ratio, double& success_num, double& total_estimate, const string &descriptor, vector<double>& time_consumption);
 bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>& correspondence, vector<double>& ov_corr_label, string folderPath, float resolution, float cmp_thresh);
+bool coloradar_registration(PointCloudPtr &src, PointCloudPtr &des, vector<Corre_3DMatch> &correspondence, vector<double> &ov_corr_label,
+							Eigen::Matrix4d &transform, string folderPath, float resolution, float cmp_thresh, double &best_score);
 void GUO_ICP(PointCloudPtr& cloud_source, PointCloudPtr& cloud_target, float& mr, int& Max_iter_Num, Eigen::Matrix4f& Mat_ICP);
 void sort_eigenvector(Eigen::VectorXd& eigenvector, Eigen::VectorXd& sorted_eigenvector, Eigen::VectorXi& index_eigenvector);
 int GTM_corre_select(int Iterations, float mr, PointCloudPtr& cloud_source, PointCloudPtr& cloud_target, vector<Corre_3DMatch> Match, vector<int>& Match_inlier);

@@ -95,7 +95,6 @@ Eigen::MatrixXf Graph_construction(vector<Corre_3DMatch>& correspondence, float 
 				score = (score < thresh) ? 0 : score;//fcgf 0.9999 fpfh 0.9
 				cmp_score(i, j) = score;
 				cmp_score(j, i) = score;
-
 			}
 		}
 	}
