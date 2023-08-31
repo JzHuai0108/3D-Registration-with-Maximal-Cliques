@@ -18,6 +18,26 @@
            sudo apt-get install openjdk-8-jdk openjdk-8-jre -y
            
 * Then visit [PCL Docs](https://pcl.readthedocs.io/projects/tutorials/en/latest/compiling_pcl_posix.html) to build and install PCL.
+
+```
+sudo apt-get install libflann1.9 libflann-dev
+
+The following build from source approach is deprecated.
+wget https://github.com/PointCloudLibrary/pcl/archive/refs/tags/pcl-1.13.1.tar.gz
+tar -xf pcl-pcl-1.13.1.tar.gz
+cd pcl-pcl-1.13.1 && mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/home/pi/Documents/slam_devel ..
+make
+# add /usr/lib/x86_64-linux-gnu/liblz4.so to build/kdtree/CMakeFiles/pcl_kdtree.dir/link.txt
+# if encountering errors undefined reference to `LZ4_resetStreamHC'
+# add /usr/lib/x86_64-linux-gnu/libcurl.so to build/outofcore/tools/CMakeFiles/pcl_outofcore_process.dir/link.txt
+# if encountering errors undefined reference to `curl_global_cleanup@CURL_OPENSSL_4'
+# Now you get the idea to fix the undefined reference errors.
+
+make install
+
+```
+
 ## 2. Install igraph
 * Tutorials of install igraph can be found at [igraph Reference Manual](https://igraph.org/c/doc/igraph-Installation.html).
 ```
@@ -41,14 +61,27 @@ make install
 
 ```
 
+### Tested in Ubuntu 22.04
+```
+mamba activate ros_env # see [robostack](https://robostack.github.io/GettingStarted.html)
+sudo apt-get install -y bison flex
+
+cmake .. -DCMAKE_INSTALL_PREFIX=/home/pi/Documents/slam_devel
+make
+make install
+
+```
+
+
 ## 3. Build MAC
 - Option 1 (purely on the command line): Use CMake to generate Makefiles and then `make`.
     - You can simply run
       ```
+      $ mamba install ros-noetic-pcl-ros
       $ cd Linux
       $ mkdir Release
       $ cd Release
-      $ /home/jhuai/Documents/slam_devel/cmake-3.27.4-linux-x86_64/bin/cmake .. -DCMAKE_BUILD_TYPE=Release -Digraph_DIR=/home/jhuai/Documents/slam_devel/lib/cmake/igraph
+      $ cmake .. -DCMAKE_BUILD_TYPE=Release -Digraph_DIR=/home/pi/Documents/slam_devel/lib/cmake/igraph -Droscpp_DIR=/home/pi/miniconda3/envs/ros_env/share/roscpp/cmake -Drosbag_DIR=/home/pi/miniconda3/envs/ros_env/share/rosbag/cmake
       $ make
       ```
 - Option 2: Use any IDE that can directly handle CMakeLists files to open the `CMakeLists.txt` in the **root** directory of MAC. Then you should have obtained a usable project and just build it. I recommend using [CLion](https://www.jetbrains.com/clion/).

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <random>
 #include <vector>
 #include <time.h>
 #include <algorithm>
@@ -265,9 +266,9 @@ void feature_matching(PointCloudPtr& cloud_source, PointCloudPtr& cloud_target, 
 
 void Add_Gaussian_noise(float dev, pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud_noise)
 {
-	boost::mt19937 rng; rng.seed(static_cast<unsigned int> (time(0)));
-	boost::normal_distribution<> nd(0, dev);
-	boost::variate_generator<boost::mt19937&, boost::normal_distribution<> > var_nor(rng, nd);
+	std::mt19937 rng; rng.seed(static_cast<unsigned int> (time(0)));
+	std::normal_distribution<> nd(0, dev);
+	auto var_nor = [&nd, &rng]{ return std::round(nd(rng)); };
 	cloud_noise->points.resize(cloud->points.size());
 	cloud_noise->header = cloud->header;
 	cloud_noise->width = cloud->width;
@@ -453,9 +454,9 @@ double Distance(pcl::PointXYZ& A, pcl::PointXYZ& B) {
 
 void boost_rand(int seed, int start, int end, int rand_num, std::vector<int>& idx)
 {
-	boost::mt19937 engine(seed);
-	boost::uniform_int<> distribution(start, end);
-	boost::variate_generator<boost::mt19937, boost::uniform_int<> > myrandom(engine, distribution);
+	std::mt19937 engine(seed);
+	std::uniform_int_distribution<> distribution(start, end);
+	auto myrandom = [&distribution, &engine]{ return std::round(distribution(engine)); };
 	std::unordered_set<int> r;
 	while (r.size() < rand_num)
 	{

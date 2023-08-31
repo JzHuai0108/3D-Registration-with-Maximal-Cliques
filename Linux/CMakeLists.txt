@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 project(MAC)
 
 set(CMAKE_CXX_STANDARD 14)
-find_package(PCL REQUIRED)
+find_package(PCL COMPONENTS REQUIRED)
 find_package(igraph 0.9.9 REQUIRED)
 FIND_PACKAGE( OpenMP REQUIRED)
 if(OPENMP_FOUND)

@@ -738,9 +738,10 @@ void GUO_ICP(PointCloudPtr& cloud_source, PointCloudPtr& cloud_target, float& mr
 		pcl::transformPointCloud(*cloud_source, *cloud_source_trans, Mat_ICP);
 		number_of_sample_points = cloud_source_trans->points.size() / pow(3.0f, residual_error);
 		vector<int> Sample_cloud_Idx;
-		boost::uniform_int<> distribution(0, cloud_source_trans->points.size());
-		boost::mt19937 engine;
-		boost::variate_generator<boost::mt19937, boost::uniform_int<> > myrandom(engine, distribution);
+		std::uniform_int_distribution<> distribution(0, cloud_source_trans->points.size());
+		std::mt19937 engine;
+		auto myrandom = [&distribution, &engine]{ return std::round(distribution(engine)); };
+
 		for (int j = 0; j < number_of_sample_points; j++)
 			Sample_cloud_Idx.push_back(myrandom());
 		Eigen::Matrix4f Mat_i;
