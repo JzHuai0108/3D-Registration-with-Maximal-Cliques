@@ -125,9 +125,9 @@ void Cloud2Meshlab_showfile(string file_open, string file_save);
 void affinity_matrix_compute(PointCloudPtr cloud_source, PointCloudPtr cloud_target, float mr, vector<Corre> Corres, Eigen::MatrixXf& M);
 void find_inlier_corre_id(PointCloudPtr cloud_s, PointCloudPtr cloud_t, vector<Corre> Corres, float correct_thresh, Eigen::Matrix4f& GT_mat, vector<int>& ids);
 void feature_matching(PointCloudPtr& cloud_source, PointCloudPtr& cloud_target,
-                      vector<vector<float>>& feature_source, vector<vector<float>>& feature_target, vector<Corre_3DMatch>& Corres);
+                      const vector<vector<float>>& feature_source, const vector<vector<float>>& feature_target, vector<Corre_3DMatch>& Corres);
 void feature_matching(PointCloudPtr& cloud_source, PointCloudPtr& cloud_target, vector<LRF>LRFs_source, vector<LRF>LRFs_target,
-	vector<int>& Idx_source, vector<int>& Idx_target, vector<vector<float>>& feature_source, vector<vector<float>>& feature_target, vector<Corre>& Corres);
+	vector<int>& Idx_source, vector<int>& Idx_target, const vector<vector<float>>& feature_source, const vector<vector<float>>& feature_target, vector<Corre>& Corres);
 void Add_Gaussian_noise(float dev, pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud_noise);
 int Correct_corre_compute(PointCloudPtr cloud_s, PointCloudPtr cloud_t, vector<Corre> Corres, float correct_thresh, Eigen::Matrix4d& GT_mat, string path);
 void Correct_corre_select(PointCloudPtr cloud_s, PointCloudPtr cloud_t, vector<Corre> Corres, float correct_thresh,
@@ -188,7 +188,7 @@ void post_refinement(vector<Corre_3DMatch>& correspondence, PointCloudPtr& src_c
 bool registration(const string &name,string src_pointcloud, string des_pointcloud,const string &corr_path, const string &label_path, const string &ov_label, const string &gt_mat, const string &folderPath, double& RE, double& TE, double& inlier_num, double& total_num, double& inlier_ratio, double& success_num, double& total_estimate, const string &descriptor, vector<double>& time_consumption);
 bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>& correspondence, vector<double>& ov_corr_label, string folderPath, float resolution, float cmp_thresh);
 bool coloradar_registration(PointCloudPtr &src, PointCloudPtr &des, vector<Corre_3DMatch> &correspondence, vector<double> &ov_corr_label,
-							Eigen::Matrix4d &transform, string folderPath, float resolution, float cmp_thresh, double &best_score);
+							Eigen::Matrix4d &transform, float resolution, float cmp_thresh, double &best_score);
 void GUO_ICP(PointCloudPtr& cloud_source, PointCloudPtr& cloud_target, float& mr, int& Max_iter_Num, Eigen::Matrix4f& Mat_ICP);
 void sort_eigenvector(Eigen::VectorXd& eigenvector, Eigen::VectorXd& sorted_eigenvector, Eigen::VectorXi& index_eigenvector);
 int GTM_corre_select(int Iterations, float mr, PointCloudPtr& cloud_source, PointCloudPtr& cloud_target, vector<Corre_3DMatch> Match, vector<int>& Match_inlier);

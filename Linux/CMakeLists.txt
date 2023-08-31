@@ -32,7 +32,7 @@ add_definitions(${PCL_DEFINITIONS})
 add_executable(MAC main.cpp desc_dec.cpp funcs.cpp PCR.cpp registration.cpp visualization.cpp Eva.h)
 target_link_libraries(MAC ${PCL_LIBRARIES} igraph::igraph)
 
-add_library(maclib desc_dec.cpp funcs.cpp PCR.cpp registration.cpp visualization.cpp Eva.h)
+add_library(maclib STATIC desc_dec.cpp funcs.cpp PCR.cpp registration.cpp visualization.cpp Eva.h)
 target_link_libraries(maclib ${PCL_LIBRARIES} igraph::igraph)
 
 add_executable(align_coloradar align_coloradar_seqs.cpp)

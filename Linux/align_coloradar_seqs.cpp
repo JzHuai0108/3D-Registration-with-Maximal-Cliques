@@ -1,5 +1,6 @@
 // align coloradar sequences by brute force matching
 #include <iostream>
+#include <unordered_map>
 #include <vector>
 #include <string>
 #include <Eigen/Eigen>
@@ -57,6 +58,12 @@ void convertRosbagToPcd(const std::string& rosbag_dir, const std::vector<std::ve
     std::string radartopic = "/os1_cloud_node/points";
     for (const auto &group : groups) {
         for (const std::string &seq : group) {
+            // if .pcd exist in output folder, then continue
+            std::string firstpcdfilename = pcd_dir + "/" + seq + "/0.pcd";
+            if (access(firstpcdfilename.c_str(), F_OK) != -1) {
+                std::cout << "pcd files exist for " << seq << ", skip." << std::endl;
+                continue;
+            }
             std::string output_seq_dir = pcd_dir + "/" + seq;
             mkdir(output_seq_dir.c_str(), 0777);
             std::string bagname = rosbag_dir + "/" + seq + ".bag";
@@ -96,17 +103,20 @@ std::pair<double, double> dist(const Eigen::Matrix4d &t1, const Eigen::Matrix4d 
 }
 
 void assignToClosestTransform(Eigen::AlignedVector<Eigen::AlignedVector<Eigen::Matrix4d>> &grouped_transforms, 
-    const Eigen::Matrix4d &transform, auto basepcd, auto querypcd) {
+    const Eigen::Matrix4d &transform, std::string basepcd, std::string querypcd, std::string query_dir) {
     int g = -1;
     std::cout << "grouped_transforms.size:" << grouped_transforms.size() <<std::endl;
     for (auto &group : grouped_transforms) {
         std::pair<double, double> d = dist(group[0], transform);
         std::cout << "d: " << d.first << ", " << d.second << std::endl;
         if (d.first < 0.1 && d.second < 0.05) {
-            g = &group - &grouped_transforms[0];
-            ofstream outFile("../result/d_values.txt", ios::out);
+            // get index of group
+            g = std::distance(&grouped_transforms[0], &group);
+            std::string filename = query_dir + "/result/d_values.txt";
+            ofstream outFile(filename, ios::app);
             outFile << "base:" << basepcd << " query:" << querypcd << " "
                     << "d: " << d.first << ", " << d.second << " g:" << g<< std::endl;
+            outFile.close();
             break;
         }
     }
@@ -120,13 +130,14 @@ void assignToClosestTransform(Eigen::AlignedVector<Eigen::AlignedVector<Eigen::M
 }
 
 bool foundCorrectTransform(const Eigen::AlignedVector<Eigen::AlignedVector<Eigen::Matrix4d>> &grouped_transforms,
-                           auto basepcd, auto querypcd)
+                           std::string basepcd, std::string querypcd, std::string query_dir)
 {
     for (auto &group : grouped_transforms) {
         if (group.size() >50) {
             std::cout << "found correct transform" << std::endl;
             std::cout << "group[0]: \n" << group[0] << std::endl;
-            std::ofstream outFile("../result/group0.txt");
+            std::string outputfile = query_dir + "/result/group0.txt";
+            std::ofstream outFile(outputfile, ios::out);
             outFile << "base:" << basepcd << " query:" << querypcd << "\n" << group[0];
             outFile.close();
 
@@ -136,97 +147,112 @@ bool foundCorrectTransform(const Eigen::AlignedVector<Eigen::AlignedVector<Eigen
     return false;
 }
 
-void alignTwoSeqs(const std::string &base_dir, const std::string &query_dir) {
+struct FrameCache {
+    PointCloudPtr cloud;
+    PointCloudPtr downsampled_cloud;
+    vector<vector<float>> FPFH_descriptor;
+};
+
+void preparePcd(const std::string &rootdir, const std::string &fn, FrameCache &cache) {
+    PointCloudPtr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    std::string pcd_path = rootdir + '/' + fn;
+    pcl::io::loadPCDFile(pcd_path, *cloud);
+    cache.cloud = cloud;
+
+    float downsample = 0.6;
+    PointCloudPtr new_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    Voxel_grid_downsample(cloud, new_cloud, downsample);
+    cache.downsampled_cloud = new_cloud;
+    FPFH_descriptor(new_cloud, downsample * 5, cache.FPFH_descriptor);
+}
+
+float prepareCache(const std::vector<std::string> &pcdfiles, const std::string &rootdir, 
+    std::unordered_map<std::string, FrameCache> &clouds) {
+    float allresolution = 0;
+    int i = 0;
+    int N = std::min(10, (int)pcdfiles.size());
+    for (const auto& fn : pcdfiles) {
+        clouds[fn] = FrameCache();
+        preparePcd(rootdir, fn, clouds[fn]);
+        if (i < N) {
+            float resolution = MeshResolution_mr_compute(clouds[fn].cloud);
+            allresolution += resolution;
+        }
+        ++i;
+    }
+    return allresolution / N;
+}
+
+void alignTwoSeqs(const std::string &base_dir, const std::unordered_map<std::string, FrameCache> &base_clouds,
+        const std::string &query_dir, float resolution) {
     std::cout << "aligning " << query_dir << " to " << base_dir << std::endl;
     std::vector<std::string> base_pcds = findPcds(base_dir);
     std::vector<std::string> query_pcds = findPcds(query_dir);
 
     srand(time(NULL));
-    std::random_shuffle(base_pcds.begin(), base_pcds.end());
     std::random_shuffle(query_pcds.begin(), query_pcds.end());
+    std::random_shuffle(base_pcds.begin(), base_pcds.end());
 
     Eigen::AlignedVector<Eigen::AlignedVector<Eigen::Matrix4d>> grouped_transforms;
     Eigen::Matrix4d transform;
 
     ofstream outFile;
-    outFile.open("../result/best_scores.txt", ios::out);
+    std::string outputdir = query_dir + "/result";
+    mkdir(outputdir.c_str(), 0777);
+    std::string filename = query_dir + "/result/best_scores.txt";
+    outFile.open(filename, ios::out);
     bool found = false;
 
-    for (const auto& base_pcd : base_pcds) {
-        for (const auto& query_pcd : query_pcds) {
-            PointCloudPtr query_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-            PointCloudPtr base_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-            PointCloudPtr new_query_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-            PointCloudPtr new_base_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-
-            std::string query_pcd_path = query_dir + '/' + query_pcd;
+    for (const auto& query_pcd : query_pcds) {
+        FrameCache query_cache;
+        preparePcd(query_dir, query_pcd, query_cache);
+        PointCloudPtr query_cloud = query_cache.cloud;
+        PointCloudPtr new_query_cloud = query_cache.downsampled_cloud;
+        const vector<vector<float>> &query_feature = query_cache.FPFH_descriptor;
+        std::cout << "query_pcd:" << query_pcd << std::endl;
+        size_t bi = 0;
+        double best_score = 0;
+        for (const auto& base_pcd : base_pcds) {
+            auto &base_cache = base_clouds.at(base_pcd);
+            PointCloudPtr base_cloud = base_cache.cloud;
+            PointCloudPtr new_base_cloud = base_cache.downsampled_cloud;
+            const vector<vector<float>> &base_feature = base_cache.FPFH_descriptor;
             std::string base_pcd_path = base_dir + '/' + base_pcd;
-            std::cout <<"\n" << "#------------------------------#" << std::endl;
-            std::cout << "query_pcd:" << query_pcd << " " << "base_pcd:" << base_pcd << std::endl;
-
-            pcl::io::loadPCDFile(query_pcd_path, *query_cloud);
-            pcl::io::loadPCDFile(base_pcd_path, *base_cloud);
-            std::cout << "query_cloud size: " << query_cloud->size() << std::endl;
-
-            float query_resolution = MeshResolution_mr_compute(query_cloud);
-            float base_resolution = MeshResolution_mr_compute(base_cloud);
-            float resolution = (query_resolution + base_resolution) / 2;
-            std::cout << "resolution" << resolution << std::endl;
-
-            float downsample = 0.6;
-            Voxel_grid_downsample(query_cloud, new_query_cloud, downsample);
-            Voxel_grid_downsample(base_cloud, new_base_cloud, downsample);
-
-            vector<vector<float>> query_feature, base_feature;
-            FPFH_descriptor(new_query_cloud, downsample * 5, query_feature);
-            FPFH_descriptor(new_base_cloud, downsample * 5, base_feature);
-
             vector<Corre_3DMatch> correspondence;
             feature_matching(new_query_cloud, new_base_cloud, query_feature, base_feature, correspondence);
-
             std::cout<<"correspondence.size:"<< correspondence.size()<<"\n";
 
             vector<double> ov_lable;
             ov_lable.resize((int)correspondence.size());
 
-            string folderPath = "../result";
-            double best_score = 0;
-            cout << "Start registration." << endl;
+            double score = 0;
             coloradar_registration(query_cloud, base_cloud, correspondence, ov_lable,
-                                   transform, folderPath, resolution, 0.99, best_score);
-            std::cout << "Transform matrix: \n" << transform << std::endl;
-            cout<<"best_score:"<<best_score<< endl;
-            outFile << base_pcd << " " << query_pcd << " " << best_score << endl;
+                                   transform, resolution, 0.99, score);
+            outFile << base_pcd << " " << query_pcd << " " << score << endl;
 
-            if (best_score > 30){
-                std::cout << "start assignToClosestTransform" <<std::endl;
-                assignToClosestTransform(grouped_transforms, transform, base_pcd, query_pcd);
+            if (score > 30) {
+                assignToClosestTransform(grouped_transforms, transform, base_pcd, query_pcd, query_dir);
             }
-            std::cout << "start foundCorrectTransform" <<std::endl;
-            found = foundCorrectTransform(grouped_transforms, base_pcd, query_pcd);
-            // clear data
-            query_cloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
-            base_cloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
-            new_query_cloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
-            new_base_cloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
-            query_feature.clear();
-            query_feature.shrink_to_fit();
-            base_feature.clear();
-            base_feature.shrink_to_fit();
+            found = foundCorrectTransform(grouped_transforms, base_pcd, query_pcd, query_dir);
+            if (score > best_score) {
+                best_score = score;
+            }
+            if (bi > base_pcds.size() / 5 && best_score < 30) {
+                break;
+            }
             correspondence.clear();
-            correspondence.shrink_to_fit();
             ov_lable.clear();
-            ov_lable.shrink_to_fit();
-            
-            if (found){
+            if (found) {
                 std::cout << "found" <<std::endl;
                 break;
             }
+            ++bi;
         }
         if(found){
             break;
         }
     }
+    outFile.close();
 }
 
 
@@ -234,14 +260,20 @@ void alignAllSeqs(const std::string& pcd_dir, const std::vector<std::vector<std:
     std::cout << "alignAllSeqs" << std::endl;
     for (const auto &group : groups){
         int j = 0;
+        std::unordered_map<std::string, FrameCache> base_clouds;
+        std::string base_dir;
+        float resolution;
         for (const auto &seq : group){
-            if (j == 0){
+            if (j == 0) {
+                base_dir = pcd_dir + "/" + group[0];
+                std::vector<std::string> base_pcds = findPcds(base_dir);
+                resolution = prepareCache(base_pcds, base_dir, base_clouds);
                 ++j;
                 continue;
             }
-            std::string base_pcds = pcd_dir + "/" + group[0];
-            std::string query_pcds = pcd_dir + "/" + seq;
-            alignTwoSeqs(base_pcds, query_pcds);
+
+            std::string query_dir = pcd_dir + "/" + seq;
+            alignTwoSeqs(base_dir, base_clouds, query_dir, resolution);
             ++j;
         }
     }
@@ -249,7 +281,6 @@ void alignAllSeqs(const std::string& pcd_dir, const std::vector<std::vector<std:
 
 int main(int argc, char** argv) {
     std::cout << "Hello, World!" << std::endl;
-    bool has_pcd = true;
     if (argc < 2) {
         std::cout << "Usage: align_coloradar_seqs <rosbag_dir> <pcd_dir>" << std::endl;
         return 1;
@@ -276,14 +307,12 @@ int main(int argc, char** argv) {
         },{
         "edgar_army_run0", "edgar_army_run1", "edgar_army_run2", "edgar_army_run3", "edgar_army_run4", "edgar_army_run5",
         },{
-        "longboard_run0", "longboard_run1", "longboard_run2", "longboard_run3", "longboard_run4", "longboard_run5","longboard_run6", "longboard_run7", "longboard_run8",
+        "longboard_run0", "longboard_run1", "longboard_run2", "longboard_run3", "longboard_run4", "longboard_run5","longboard_run6", "longboard_run7",
         },   
     };
 
-    if (has_pcd == false){
-        convertRosbagToPcd(rosbag_dir, groups, pcd_dir);
-        std::cout << "pcds saved" << std::endl;
-    }
+    convertRosbagToPcd(rosbag_dir, groups, pcd_dir);
+    std::cout << "pcds saved" << std::endl;
 
     alignAllSeqs(pcd_dir, groups);
 

@@ -9,7 +9,7 @@ import glob
 import os
 from tqdm import tqdm
 
-def mergemap(args, base_to_lidar, bag_file):
+def mergemap(args, base_T_lidar, bag_file):
     groud_truth_path = bag_file.split(".")[0] + '_gt.txt'
 
     bag = rosbag.Bag(bag_file, "r")
@@ -48,7 +48,7 @@ def mergemap(args, base_to_lidar, bag_file):
         sampled_gt_pose.append(temp_gt_pose)
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(points[:, :3])
-        pcd_bs = pcd.transform(base_to_lidar)
+        pcd_bs = pcd.transform(base_T_lidar)
         pcd_global = pcd_bs.transform(temp_gt_pose)
         xyz_global = np.asarray(pcd_global.points)
         scan_intensity = np.asarray(points[:, 3]).reshape(-1, 1)
@@ -118,25 +118,22 @@ def load_trans(trans_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='turn list of rosbags into ColoRadar dasatet format')
-    parser.add_argument('-datapath', '--datapath', type=str, default='/media/cyw/CYW-ZX2/coloradar/data/',
-                        help='bag files path')
+    parser.add_argument('datapath', type=str, default='/media/cyw/CYW-ZX2/coloradar/data/',
+                        help='The folder containing all bag files')
     parser.add_argument('--savepath', type=str, default='/media/cyw/CYW-ZX2/coloradar/mergemap/',
-                        help='merged pcd path')
+                        help='the overarching output path to save results for all seqs. It is the output path of align_coloradar_seqs.')
     parser.add_argument('--lidartopic', type=str, default='/os1_cloud_node/points',
                         help='lidartopic')
     parser.add_argument('--bs_to_lidar_path', type=str,
-                        default='/media/cyw/CYW-ZX2/coloradar/calib/transforms/base_to_lidar.txt')
-    parser.add_argument('--db_to_query_path', type=str,
-                        default='/media/cyw/CYW-ZX2/coloradar/transform/')
-    parser.add_argument('--data_tra_name', type=str, default='edgar_classroom_run')
-    parser.add_argument('--num_points_in_a_scan', type=int, default=150000)
+                        default='/media/cyw/CYW-ZX2/coloradar/calib/transforms/base_T_lidar.txt')
+
+    parser.add_argument('--num_points_in_a_scan', type=int, default=10000)
     parser.add_argument('--scan_idx_range_to_stack', type=list, default=[0, 200])
     parser.add_argument('--node_skip', type=int, default=1)
     parser.add_argument('--down_voxel_size', type=float, default=0.5)
     args = parser.parse_args()
 
-    # load calib
-    base_to_lidar = read_calib(args.bs_to_lidar_path)
+    base_T_lidar = read_calib(args.bs_to_lidar_path)
 
     if not os.path.exists(args.savepath):
         os.makedirs(args.savepath)
@@ -144,38 +141,58 @@ if __name__ == '__main__':
     database_gt = []
     query_gt = []
 
-    # Get all .bag files from datapath
-    bag_files = glob.glob(args.datapath + "*.bag")
-    for bag_file in tqdm(bag_files):
-        # merge pointclouds
-        seq_name = (bag_file.split("/")[-1]).split(".")[0]
-        pcd_downsampled, sampled_gt_pose = mergemap(args, base_to_lidar, bag_file)
-        # Save sampled_gt_pose to txt file
-        with open(args.savepath + seq_name + 'sampled_gt.txt', 'w') as f:
-            for pose in sampled_gt_pose:
-                pose_str = ' '.join(str(x) for x in pose.flatten())
-                f.write(pose_str + '\n')
+    groups = [
+        ['edgar_classroom_run0', 'edgar_classroom_run1', 'edgar_classroom_run2', 'edgar_classroom_run3', 
+         'edgar_classroom_run4', 'edgar_classroom_run5'],
+        ['ec_hallways_run0', 'ec_hallways_run1', 'ec_hallways_run2', 'ec_hallways_run3', 'ec_hallways_run4'],
+        ['arpg_lab_run0', 'arpg_lab_run1', 'arpg_lab_run2', 'arpg_lab_run3', 'arpg_lab_run4'],
+        ['outdoors_run0', 'outdoors_run1', 'outdoors_run2', 'outdoors_run3', 'outdoors_run4', 
+         'outdoors_run5', 'outdoors_run6', 'outdoors_run7', 'outdoors_run8', 'outdoors_run9'],
+        ['aspen_run0', 'aspen_run1', 'aspen_run2', 'aspen_run3', 'aspen_run4', 'aspen_run5',
+         'aspen_run6', 'aspen_run7', 'aspen_run8', 'aspen_run9', 'aspen_run10', 'aspen_run11'],
+        ['edgar_army_run0', 'edgar_army_run1', 'edgar_army_run2', 'edgar_army_run3', 'edgar_army_run4', 'edgar_army_run5'],
+        ['longboard_run0', 'longboard_run1', 'longboard_run2', 'longboard_run3', 'longboard_run4', 'longboard_run5',
+         'longboard_run6', 'longboard_run7']]
+    bag_files = []
+    for group in groups:
+        groupbags = []
+        for seq in group:
+            groupbags.append(os.path.join(args.datapath, seq + '.bag'))
+        bag_files.append(groupbags)
+    # print bagfiles in each group
+    for g, group in enumerate(bag_files):
+        for b, bag_file in enumerate(group):
+            print("{}:{}:{}".format(g, b, bag_file))
 
-        # save merged pointcloud
-        save_pcd_path = args.savepath + seq_name + ".pcd"
-        o3d.io.write_point_cloud(save_pcd_path, pcd_downsampled)
+    for group in tqdm(bag_files):
+        for i, bag_file in enumerate(group):
+            seq_name = os.path.basename(bag_file).split(".")[0]
+            pcd_downsampled, sampled_gt_pose = mergemap(args, base_T_lidar, bag_file)
+            # Save sampled_gt_pose to txt file
+            with open(os.path.join(args.savepath, seq_name, 'result/sampled_gt.txt'), 'w') as f:
+                for pose in sampled_gt_pose:
+                    pose_str = ' '.join(str(x) for x in pose.flatten())
+                    f.write(pose_str + '\n')
 
-        # Wb_2_Wq
-        if "0" in seq_name:
-            database_gt = sampled_gt_pose
-            continue
-        query_gt = sampled_gt_pose
-        trans_path = args.db_to_query_path + seq_name + '_trans.txt'
-        db_id, query_id, db_to_query = load_trans(trans_path)
+            # save merged pointcloud
+            save_pcd_path = os.path.join(args.savepath, seq_name, "result/mergedmap.pcd")
+            o3d.io.write_point_cloud(save_pcd_path, pcd_downsampled)
 
-        W_database = database_gt[db_id]
-        W_query = query_gt[query_id]
-        W_query_inv = np.linalg.inv(query_gt[query_id])
-        lidar_to_base = np.linalg.inv(base_to_lidar)
+            if i == 0:
+                database_gt = sampled_gt_pose
+                continue
+            
+            query_gt = sampled_gt_pose
+            trans_path = os.path.join(args.savepath, seq_name, 'result/group0.txt')
+            db_id, query_id, db_T_query = load_trans(trans_path)
 
-        Wb_2_Wq = database_gt[db_id] @ base_to_lidar @ db_to_query @ np.linalg.inv(base_to_lidar) @ np.linalg.inv(query_gt[query_id])
-        pcd_in_Wb = pcd_downsampled.transform(Wb_2_Wq)
+            W_database = database_gt[db_id]
+            W_query = query_gt[query_id]
+            W_query_inv = np.linalg.inv(query_gt[query_id])
 
-        # save transformed query pcd
-        save_pcd_Ws_path = args.savepath + seq_name + "_Ws.pcd"
-        o3d.io.write_point_cloud(save_pcd_Ws_path, pcd_in_Wb)
+            Wb_T_Wq = database_gt[db_id] @ base_T_lidar @ db_T_query @ np.linalg.inv(base_T_lidar) @ W_query_inv
+            pcd_in_Wb = pcd_downsampled.transform(Wb_T_Wq)
+
+            # save transformed query pcd
+            save_pcd_Ws_path = os.path.join(args.savepath, seq_name, "result/mapinbase.pcd")
+            o3d.io.write_point_cloud(save_pcd_Ws_path, pcd_in_Wb)

@@ -180,7 +180,7 @@ int Voxel_grid_downsample(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, pcl::Point
 }
 /*******************************************************************************Feature match********************************************************/
 void feature_matching(PointCloudPtr& cloud_source, PointCloudPtr& cloud_target,
-                      vector<vector<float>>& feature_source, vector<vector<float>>& feature_target, vector<Corre_3DMatch>& Corres)
+                      const vector<vector<float>>& feature_source, const vector<vector<float>>& feature_target, vector<Corre_3DMatch>& Corres)
 {
     int i, j;
     pcl::PointCloud<pcl::FPFHSignature33>::Ptr Feature_source(new pcl::PointCloud<pcl::FPFHSignature33>);
@@ -222,7 +222,7 @@ void feature_matching(PointCloudPtr& cloud_source, PointCloudPtr& cloud_target,
 }
 
 void feature_matching(PointCloudPtr& cloud_source, PointCloudPtr& cloud_target, vector<LRF>LRFs_source, vector<LRF>LRFs_target,
-	vector<int>& Idx_source, vector<int>& Idx_target, vector<vector<float>>& feature_source, vector<vector<float>>& feature_target, vector<Corre>& Corres)
+	vector<int>& Idx_source, vector<int>& Idx_target, const vector<vector<float>>& feature_source, const vector<vector<float>>& feature_target, vector<Corre>& Corres)
 {
 	int i, j;
 	pcl::PointCloud<pcl::SHOT352>::Ptr Feature_source(new pcl::PointCloud<pcl::SHOT352>);

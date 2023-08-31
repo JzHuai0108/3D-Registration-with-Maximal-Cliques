@@ -1374,7 +1374,7 @@ bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>&
 }
 
 bool coloradar_registration(PointCloudPtr &src, PointCloudPtr &des, vector<Corre_3DMatch> &correspondence, vector<double> &ov_corr_label,
-							Eigen::Matrix4d &transform, string folderPath, float resolution, float cmp_thresh, double &best_score)
+							Eigen::Matrix4d &transform, float resolution, float cmp_thresh, double &best_score)
 {
 	bool sc2 = true;
 	bool GT_cmp_mode = false;
@@ -1383,14 +1383,6 @@ bool coloradar_registration(PointCloudPtr &src, PointCloudPtr &des, vector<Corre
 	string descriptor = "NULL";
 	string name = "test";
 	int total_num = correspondence.size();
-	if (access(folderPath.c_str(), 0))
-	{
-		if (mkdir(folderPath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0)
-		{
-			cout << " 创建数据项目录失败 " << endl;
-			exit(-1);
-		}
-	}
 
 	// std::cout << "begin " << std::endl;
 	std::chrono::time_point<std::chrono::system_clock> start, end;
