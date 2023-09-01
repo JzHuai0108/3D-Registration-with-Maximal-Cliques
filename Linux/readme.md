@@ -43,13 +43,16 @@ make install
 
 ## 3. Build MAC
 - Option 1 (purely on the command line): Use CMake to generate Makefiles and then `make`.
-    - You can simply run
-      ```
-      $ cd Linux
-      $ mkdir Release
-      $ cd Release
-      $ /home/jhuai/Documents/slam_devel/cmake-3.27.4-linux-x86_64/bin/cmake .. -DCMAKE_BUILD_TYPE=Release -Digraph_DIR=/home/jhuai/Documents/slam_devel/lib/cmake/igraph
-      $ make
-      ```
+- You can simply run
+  ```
+  $ cd Linux
+  $ mkdir Release
+  $ cd Release
+  $ conda deactivate
+  $ /home/jhuai/Documents/slam_devel/cmake-3.27.4-linux-x86_64/bin/cmake .. -DCMAKE_BUILD_TYPE=Release -Digraph_DIR=/home/jhuai/Documents/slam_devel/lib/cmake/igraph -DPYTHON_EXECUTABLE=/usr/bin/python3
+  $ make
+  $ cd ../..
+  $ ./Linux/release/MAC --fixed_pcd="/media/jhuai/BackupPlus/jhuai/results/align_coloradar/edgar_classroom_run0/mergedmap.pcd" --moving_pcd="/media/jhuai/BackupPlus/jhuai/results/align_coloradar/edgar_classroom_run3/mergedmap.pcd" --output_path="/media/jhuai/BackupPlus/jhuai/results/align_coloradar/edgar_classroom_run3/" --demo
+  ```
 - Option 2: Use any IDE that can directly handle CMakeLists files to open the `CMakeLists.txt` in the **root** directory of MAC. Then you should have obtained a usable project and just build it. I recommend using [CLion](https://www.jetbrains.com/clion/).
 - NOTICE: Please compile in **RELEASE** mode!

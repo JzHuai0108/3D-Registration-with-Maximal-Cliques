@@ -142,6 +142,8 @@ void SHOT_compute(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, vector<int> indices
 pcl::PointCloud<pcl::PointXYZ>::Ptr getISS3dKeypoint(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, float resolution, vector<int>& key_indices);
 void Harris3D_detector(PointCloudPtr cloud, float NMS_radius, vector<int>& key_indices);
 void FPFH_descriptor(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, float sup_radius, std::vector<std::vector<float>>& features);
+int random_downsample(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr& new_cloud,
+					  int num);
 int Voxel_grid_downsample(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr& new_cloud,
                       float leaf_size);
 vector<int> removeInvalidPoint(PointCloudPtr cloud_in, vector<int>& keyPointIdx, float resolution);

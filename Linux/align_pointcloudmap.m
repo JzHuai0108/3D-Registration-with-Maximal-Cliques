@@ -7,19 +7,19 @@ datadir = '/media/jhuai/BackupPlus/jhuai/results/align_coloradar';
 
 seqnames = {'edgar_classroom_run', 'ec_hallways_run', 'arpg_lab_run', ...
             'outdoors_run', 'aspen_run', 'edgar_army_run', 'longboard_run'};
-refids = [0, 0, 0, 0, 0, 0, 0, 0];
-seqids = {1:15, 1:15, 1:15. 1:15, 1:15, 1:15, 1:15, 1:15};
+refids = [0, 0, 0, 0, 0, 0, 0];
+seqids = {1:15, 1:15, 1:15. 1:15, 1:15, 1:15, 1:15};
 
-% hard sequences
+% hard failed sequences
 % seqnames = {'edgar_classroom_run', 'ec_hallways_run', 'outdoors_run', 'edgar_army_run', 'longboard_run'};
-% refids = [0, 2, 0, 0, 1];
-% seqids = {[3], [1], [2, 9], [1], [2], [0, 2:7]};
+% refids = [0, 0, 0, 0, 0];
+% seqids = {[3], [1,2,3], [1,3,7,8], [1, 3], 1:7};
 
 for s = 1:numel(seqnames)
     seqname = seqnames{s};
     basepcd = [datadir, '/', seqname, num2str(refids(s)), '/mergedmap.pcd'];
     fixed = pcread(basepcd);
-    maxNumPoints = 10;
+    maxNumPoints = 12;
     fixedDownsampled = pcdownsample(fixed,"nonuniformGridSample",maxNumPoints);
     fprintf('fixed points %d after downsample %d\n', size(fixed.Location, 1), size(fixedDownsampled.Location, 1));
 
@@ -34,7 +34,7 @@ for s = 1:numel(seqnames)
 
         fprintf('moving points %d after downsample %d\n', size(moving.Location, 1), size(movingDownsampled.Location, 1));
         [tform, movingAligned, rmse] = pcregistericp(movingDownsampled,fixedDownsampled, ...
-            'Metric','pointToPoint','Extrapolate',true, 'InlierRatio', 0.6);
+            'Metric','pointToPoint','Extrapolate',true, 'InlierRatio', 0.9);
         ptCloudAligned = pctransform(moving,tform);
         figure;
         pcshowpair(ptCloudAligned, fixed);

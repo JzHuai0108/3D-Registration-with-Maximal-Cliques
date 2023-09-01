@@ -170,6 +170,27 @@ float MeshResolution_mr_compute(PointCloudPtr& cloud)
 //	fclose(fp);
 //}
 
+int random_downsample(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr& new_cloud,
+					  int num) {
+	int i;
+	srand((unsigned)time(NULL));
+	vector<int> index;
+	for (i = 0; i < cloud->points.size(); i++) {
+		index.push_back(i);
+	}
+	random_shuffle(index.begin(), index.end());
+	new_cloud->width = num;
+	new_cloud->height = 1;
+	new_cloud->is_dense = true;
+	new_cloud->points.resize(new_cloud->width * new_cloud->height);
+	for (i = 0; i < new_cloud->points.size(); i++) {
+		new_cloud->points[i].x = cloud->points[index[i]].x;
+		new_cloud->points[i].y = cloud->points[index[i]].y;
+		new_cloud->points[i].z = cloud->points[index[i]].z;
+	}
+	return 0;
+}
+
 int Voxel_grid_downsample(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr& new_cloud,
                       float leaf_size) {
     pcl::VoxelGrid<pcl::PointXYZ> sor;

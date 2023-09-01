@@ -1341,7 +1341,7 @@ bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>&
     //保存匹配到txt
     savetxt(correspondence, folderPath + "/corr.txt");
     savetxt(selected, folderPath + "/selected.txt");
-    string save_est = folderPath + "/est.txt";
+    string save_est = folderPath + "/des_T_src.txt";
     ofstream outfile(save_est, ios::trunc);
     outfile.setf(ios::fixed, ios::floatfield);
     outfile << setprecision(10) << best_est;

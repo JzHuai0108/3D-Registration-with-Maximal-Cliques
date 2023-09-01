@@ -7,3 +7,7 @@
 .obsidian/workspace.json
 
 Linux/release/
+
+Linux/debug/
+
+Linux/CMakeLists.txt.user
