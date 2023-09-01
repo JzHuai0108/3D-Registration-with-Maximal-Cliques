@@ -213,7 +213,13 @@ void alignTwoSeqs(const std::string &base_dir, const std::unordered_map<std::str
         size_t bi = 0;
         double best_score = 0;
         for (const auto& base_pcd : base_pcds) {
-            auto &base_cache = base_clouds.at(base_pcd);
+            auto bit = base_clouds.find(base_pcd);
+            if (bit == base_clouds.end()) {
+                std::cerr << "Warn: base_pcd:" << base_pcd << " not found" << std::endl;
+                continue;
+            }
+            auto &base_cache = bit->second;
+
             PointCloudPtr base_cloud = base_cache.cloud;
             PointCloudPtr new_base_cloud = base_cache.downsampled_cloud;
             const vector<vector<float>> &base_feature = base_cache.FPFH_descriptor;
@@ -268,12 +274,14 @@ void alignAllSeqs(const std::string& pcd_dir, const std::vector<std::vector<std:
                 base_dir = pcd_dir + "/" + group[0];
                 std::vector<std::string> base_pcds = findPcds(base_dir);
                 resolution = prepareCache(base_pcds, base_dir, base_clouds);
+                
                 ++j;
                 continue;
             }
-
             std::string query_dir = pcd_dir + "/" + seq;
+            resolution = 0.01;
             alignTwoSeqs(base_dir, base_clouds, query_dir, resolution);
+            std::cout << "resolution:" << resolution << std::endl;
             ++j;
         }
     }
@@ -292,10 +300,10 @@ int main(int argc, char** argv) {
     low_inlieratio = false;
     no_logs = false;
     std::vector<std::vector<std::string>> groups = {
+        { "edgar_classroom_run0", "edgar_classroom_run1", "edgar_classroom_run2", "edgar_classroom_run3",
+          "edgar_classroom_run4", "edgar_classroom_run5", },
         {
-        "edgar_classroom_run0", "edgar_classroom_run1", "edgar_classroom_run2", "edgar_classroom_run3","edgar_classroom_run4", "edgar_classroom_run5",
-        }, {
-        "ec_hallways_run0", "ec_hallways_run1", "ec_hallways_run2", "ec_hallways_run3", "ec_hallways_run4",
+        "ec_hallways_run0", "ec_hallways_run4", "ec_hallways_run1", "ec_hallways_run2", "ec_hallways_run3",
         }, {
         "arpg_lab_run0", "arpg_lab_run1", "arpg_lab_run2", "arpg_lab_run3", "arpg_lab_run4",
         }, {
