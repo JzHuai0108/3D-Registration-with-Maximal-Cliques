@@ -1335,16 +1335,18 @@ bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>&
     }
     cout << endl;
     cout << best_est << endl;
-    Corres_Viewer_Score(src, des, selected, resolution, (int)selected.size());
-    visualization(src, des, best_est, resolution);
+    // Corres_Viewer_Score(src, des, selected, resolution, (int)selected.size());
+    // visualization(src, des, best_est, resolution);
 
     //保存匹配到txt
     savetxt(correspondence, folderPath + "/corr.txt");
     savetxt(selected, folderPath + "/selected.txt");
-    string save_est = folderPath + "/des_T_src.txt";
+    string save_est = folderPath + "/Wt_T_Ws.txt";
     ofstream outfile(save_est, ios::trunc);
     outfile.setf(ios::fixed, ios::floatfield);
-    outfile << setprecision(10) << best_est;
+    outfile << setprecision(10) << best_est(0, 0) << " " << best_est(0, 1) << " " << best_est(0, 2) << " " << best_est(0, 3) << 
+        " " << best_est(1, 0) << " " << best_est(1, 1) << " " << best_est(1, 2) << " " << best_est(1, 3) <<
+        " " << best_est(2, 0) << " " << best_est(2, 1) << " " << best_est(2, 2) << " " << best_est(2, 3) << std::endl;
     outfile.close();
 
     correspondence.clear();

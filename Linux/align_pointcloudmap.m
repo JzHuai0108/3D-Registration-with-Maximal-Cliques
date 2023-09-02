@@ -20,33 +20,36 @@ for s = 1:numel(seqnames)
     basepcd = [datadir, '/', seqname, num2str(refids(s)), '/mergedmap.pcd'];
     fixed = pcread(basepcd);
     maxNumPoints = 12;
+    outputlog = [datadir, '/', seqname, num2str(refids(s)), '/icp.log'];
+    logid = fopen(outputlog, 'w');
     fixedDownsampled = pcdownsample(fixed,"nonuniformGridSample",maxNumPoints);
-    fprintf('fixed points %d after downsample %d\n', size(fixed.Location, 1), size(fixedDownsampled.Location, 1));
+    fprintf(logid, 'fixed points %d after downsample %d\n', size(fixed.Location, 1), size(fixedDownsampled.Location, 1));
 
     for i=seqids{s}
         querypcd = [datadir, '/', seqname, num2str(i), '/mergedmap.pcd'];
         if ~isfile(querypcd)
             continue;
         end
+
         fprintf('Registering %s\n', querypcd);
+        fprintf(logid, 'Registering %s to %s\n', querypcd, basepcd);
         moving = pcread(querypcd);
         movingDownsampled = pcdownsample(moving,"nonuniformGridSample",maxNumPoints);
 
-        fprintf('moving points %d after downsample %d\n', size(moving.Location, 1), size(movingDownsampled.Location, 1));
+        fprintf(logid, 'moving points %d after downsample %d\n', size(moving.Location, 1), size(movingDownsampled.Location, 1));
         [tform, movingAligned, rmse] = pcregistericp(movingDownsampled,fixedDownsampled, ...
             'Metric','pointToPoint','Extrapolate',true, 'InlierRatio', 0.9);
         ptCloudAligned = pctransform(moving,tform);
-        figure;
-        pcshowpair(ptCloudAligned, fixed);
-        title([num2str(i), ' to ', num2str(refids(s)), ' ', seqname], 'Interpreter', 'none');
+%         figure;
+%         pcshowpair(ptCloudAligned, fixed);
+%         title([num2str(i), ' to ', num2str(refids(s)), ' ', seqname], 'Interpreter', 'none');
 
         fix_T_moving = [tform.Rotation, tform.Translation'];
-        fprintf('Rmse %.3f, pose of the moving point cloud is:\n', rmse);
-        disp(fix_T_moving);
+        fprintf(logid, 'Rmse %.3f, pose of the moving point cloud is:\n', rmse);
+        fprintf(logid, '%.9f %.9f %.9f %.9f\n', fix_T_moving');
 
         outputfile = [datadir, '/', seqname, num2str(i), '/W', num2str(refids(s)), '_T_Wi.txt'];
         fid = fopen(outputfile, 'w');
-
         fprintf(fid, '%.9f %.9f %.9f %.9f', fix_T_moving(1,1), fix_T_moving(1,2), fix_T_moving(1,3), fix_T_moving(1,4));
         fprintf(fid, ' ');
         fprintf(fid, '%.9f %.9f %.9f %.9f', fix_T_moving(2,1), fix_T_moving(2,2), fix_T_moving(2,3), fix_T_moving(2,4));
@@ -55,4 +58,5 @@ for s = 1:numel(seqnames)
         fprintf(fid, '\n');
         fclose(fid);
     end
+    fclose(logid);
 end

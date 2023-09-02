@@ -157,11 +157,12 @@ void demo(const std::string& fixed_pcd, const std::string& moving_pcd,
   float resolution = (src_resolution + des_resolution) / 2;
 
   std::cout << "Downsampling..." << std::endl;
-  float downsample = 5 * resolution;  // 0.05;
+  float downsample = 0.05;
+  double ratio = std::min(0.06, (double)80000 / (double)(src_cloud->size() + des_cloud->size()));
   std::cout << "average resolution: " << resolution << " downsample " << downsample
-			<< std::endl;
-  random_downsample(src_cloud, new_src_cloud, int(src_cloud->size() * 0.05));
-  random_downsample(des_cloud, new_des_cloud, int(des_cloud->size() * 0.05));
+  			<< " ratio " << ratio << std::endl;
+  random_downsample(src_cloud, new_src_cloud, int(src_cloud->size() * ratio));
+  random_downsample(des_cloud, new_des_cloud, int(des_cloud->size() * ratio));
 
 //   Voxel_grid_downsample(src_cloud, new_src_cloud, downsample);
 //   Voxel_grid_downsample(des_cloud, new_des_cloud, downsample);
@@ -180,7 +181,7 @@ void demo(const std::string& fixed_pcd, const std::string& moving_pcd,
   ov_lable.resize((int)correspondence.size());
 
   folderPath = output_path;
-  cout << "Start registration." << endl;
+  cout << "Start registration with output path " << folderPath << endl;
   registration(src_cloud, des_cloud, correspondence, ov_lable, folderPath,
                resolution, 0.99);
   cout << "Registration done!" << endl;
