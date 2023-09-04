@@ -22,18 +22,18 @@ for s = 6:6 % numel(seqnames)
         end
         fprintf('Showing %s\n', querypcd);
         moving = pcread(querypcd);
-        movingDownsampled = pcdownsample(moving,"nonuniformGridSample",maxNumPoints);
-        
-        queryposefile = [datadir, '/', seqname, num2str(i), '/Wt_T_Ws.txt'];
+
+        queryposefile = [datadir, '/', seqname, num2str(i), '/W0_T_Wi.txt'];
+
         if ~isfile(queryposefile)
-            queryposefile = [datadir, '/', seqname, num2str(i), '/W0_T_Wi.txt'];
-            if ~isfile(queryposefile)
-                fprintf('Failed to find pose file %s\n', queryposefile);
-                continue;
-            end
+            fprintf('Failed to find pose file %s\n', queryposefile);
+            continue;
         end
+
+        fprintf('queryfile %s\n', queryposefile);
         tform = readtransform(queryposefile);
-        points = [moving.Location, zeros(size(moving.Location, 1), 1)] * tform;
+        points = [moving.Location, ones(size(moving.Location, 1), 1)] * tform';
+
         ptCloudAligned = pointCloud(points(:, 1:3));
         figure;
         pcshowpair(ptCloudAligned, fixed);

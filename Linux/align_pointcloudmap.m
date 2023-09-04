@@ -40,11 +40,11 @@ for s = 1:numel(seqnames)
         [tform, movingAligned, rmse] = pcregistericp(movingDownsampled,fixedDownsampled, ...
             'Metric','pointToPoint','Extrapolate',true, 'InlierRatio', 0.9);
         ptCloudAligned = pctransform(moving,tform);
-%         figure;
-%         pcshowpair(ptCloudAligned, fixed);
-%         title([num2str(i), ' to ', num2str(refids(s)), ' ', seqname], 'Interpreter', 'none');
+        % figure;
+        % pcshowpair(ptCloudAligned, fixed);
+        % title([num2str(i), ' to ', num2str(refids(s)), ' ', seqname], 'Interpreter', 'none');
 
-        fix_T_moving = [tform.Rotation, tform.Translation'];
+        fix_T_moving = tform.A;
         fprintf(logid, 'Rmse %.3f, pose of the moving point cloud is:\n', rmse);
         fprintf(logid, '%.9f %.9f %.9f %.9f\n', fix_T_moving');
 
