@@ -15,6 +15,7 @@ seqids = {1:15, 1:15, 1:15. 1:15, 1:15, 1:15, 1:15};
 % refids = [0, 0, 0, 0, 0];
 % seqids = {[3], [1,2,3], [1,3,7,8], [1, 3], 1:7};
 
+v = ver('MATLAB');
 for s = 1:numel(seqnames)
     seqname = seqnames{s};
     basepcd = [datadir, '/', seqname, num2str(refids(s)), '/mergedmap.pcd'];
@@ -44,19 +45,22 @@ for s = 1:numel(seqnames)
         % pcshowpair(ptCloudAligned, fixed);
         % title([num2str(i), ' to ', num2str(refids(s)), ' ', seqname], 'Interpreter', 'none');
 
-        fix_T_moving = tform.A;
+        if v.Release=="(R2023a)"
+            fix_T_moving = tform.A;
+        elseif v.Release=="(R2022a)"
+            fix_T_moving = [tform.Rotation', tform.Translation'];
+        elseif v.Release=="(R2021a)"
+            fix_T_moving = [tform.Rotation, tform.Translation'];
+        else
+            fprintf('Unrecognized matlab release %s. Fall back to R2021a.\n', v.Release);
+            fix_T_moving = [tform.Rotation, tform.Translation'];
+        end
+
         fprintf(logid, 'Rmse %.3f, pose of the moving point cloud is:\n', rmse);
         fprintf(logid, '%.9f %.9f %.9f %.9f\n', fix_T_moving');
 
         outputfile = [datadir, '/', seqname, num2str(i), '/W', num2str(refids(s)), '_T_Wi.txt'];
-        fid = fopen(outputfile, 'w');
-        fprintf(fid, '%.9f %.9f %.9f %.9f', fix_T_moving(1,1), fix_T_moving(1,2), fix_T_moving(1,3), fix_T_moving(1,4));
-        fprintf(fid, ' ');
-        fprintf(fid, '%.9f %.9f %.9f %.9f', fix_T_moving(2,1), fix_T_moving(2,2), fix_T_moving(2,3), fix_T_moving(2,4));
-        fprintf(fid, ' ');
-        fprintf(fid, '%.9f %.9f %.9f %.9f', fix_T_moving(3,1), fix_T_moving(3,2), fix_T_moving(3,3), fix_T_moving(3,4));
-        fprintf(fid, '\n');
-        fclose(fid);
+        write_transform(fix_T_moving, outputfile);
     end
     fclose(logid);
 end

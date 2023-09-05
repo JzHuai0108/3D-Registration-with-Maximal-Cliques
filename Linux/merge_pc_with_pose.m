@@ -1,6 +1,8 @@
 function merge_pc_with_pose()
-datadir = '/media/jhuai/BackupPlus/jhuai/results/align_coloradar';
+addpath('/media/jhuai/BackupPlus/jhuai/tools/export_fig');
 
+datadir = '/media/jhuai/BackupPlus/jhuai/results/align_coloradar';
+bagdir = '/media/jhuai/BackupPlus/jhuai/data/coloradar/rosbags';
 seqnames = {'edgar_classroom_run', 'ec_hallways_run', 'arpg_lab_run', ...
             'outdoors_run', 'aspen_run', 'edgar_army_run', 'longboard_run'};
 refids = [0, 0, 0, 0, 0, 0, 0];
@@ -8,7 +10,7 @@ seqids = {1:15, 1:15, 1:15. 1:15, 1:15, 1:15, 1:15};
 
 close all;
 
-for s = 6:6 % numel(seqnames)
+for s = 1:6 % numel(seqnames)
     seqname = seqnames{s};
     basepcd = [datadir, '/', seqname, num2str(refids(s)), '/mergedmap.pcd'];
     fixed = pcread(basepcd);
@@ -22,7 +24,6 @@ for s = 6:6 % numel(seqnames)
         end
         fprintf('Showing %s\n', querypcd);
         moving = pcread(querypcd);
-
         queryposefile = [datadir, '/', seqname, num2str(i), '/W0_T_Wi.txt'];
 
         if ~isfile(queryposefile)
@@ -31,21 +32,17 @@ for s = 6:6 % numel(seqnames)
         end
 
         fprintf('queryfile %s\n', queryposefile);
-        tform = readtransform(queryposefile);
+        tform = read_transform(queryposefile);
         points = [moving.Location, ones(size(moving.Location, 1), 1)] * tform';
 
         ptCloudAligned = pointCloud(points(:, 1:3));
         figure;
         pcshowpair(ptCloudAligned, fixed);
+        view(0, 90);
         title([num2str(i), ' to ', num2str(refids(s)), ' ', seqname], 'Interpreter', 'none');
+        figname = [bagdir, '/gt/', seqname, num2str(i), '_cloud_W', num2str(refids(s)), '.png'];
+        saveas(gcf, figname);
     end
 end
 end
 
-function tform = readtransform(fn)
-    did = fopen(fn, 'r');
-    c = textscan(did, '%f');
-    fclose(did);
-    W0_T_W = reshape(c{1}, 4, 3)';
-    tform = [W0_T_W; 0, 0, 0, 1];
-end
