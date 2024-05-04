@@ -43,7 +43,7 @@ We provide a simple demo in python, please refer to [Python_implement](https://g
 * `--no_logs` forbid generation of log files.
 
 ## Datasets
-All tested datasets can be found at this [link](https://zxy517-my.sharepoint.com/:f:/g/personal/xy_zhang_zxy517_onmicrosoft_com/EospuCxhcKVGhH0BbCMsHlIBDaLjlHqfFPFB1KCo3wXEJA?e=hK6Gsd)
+All tested datasets can be found at this [link](https://pan.baidu.com/s/1KZS2LccseYJZWMmDG0xDbw), password：1234.
 
 ## Results
 ### U3M
@@ -69,6 +69,9 @@ All tested datasets can be found at this [link](https://zxy517-my.sharepoint.com
 ### Performance boosting
 
 <img src="https://github.com/zhangxy0517/3D-Registration-with-Maximal-Cliques/blob/main/figures/table.png" width="600px">
+
+## Projects using MAC
+* [Zhang et al., FastMAC: Stochastic Spectral Sampling of Correspondence Graph (CVPR 2024)](https://github.com/Forrest-110/FastMAC)
 
 ## Citation
 If you find this code useful for your work or use it in your project, please consider citing:

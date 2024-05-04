@@ -156,13 +156,12 @@ void demo(const std::string& fixed_pcd, const std::string& moving_pcd,
   float des_resolution = MeshResolution_mr_compute(des_cloud);
   float resolution = (src_resolution + des_resolution) / 2;
 
-  std::cout << "Downsampling..." << std::endl;
-  float downsample = 0.05;
-  double ratio = std::min(0.06, (double)80000 / (double)(src_cloud->size() + des_cloud->size()));
-  std::cout << "average resolution: " << resolution << " downsample " << downsample
-  			<< " ratio " << ratio << std::endl;
-  random_downsample(src_cloud, new_src_cloud, int(src_cloud->size() * ratio));
-  random_downsample(des_cloud, new_des_cloud, int(des_cloud->size() * ratio));
+    float downsample = 5 * resolution;
+    Voxel_grid_downsample(src_cloud, new_src_cloud, downsample);
+    Voxel_grid_downsample(des_cloud, new_des_cloud, downsample);
+    vector<vector<float>> src_feature, des_feature;
+    FPFH_descriptor(new_src_cloud, downsample*5, src_feature);
+    FPFH_descriptor(new_des_cloud, downsample*5, des_feature);
 
 //   Voxel_grid_downsample(src_cloud, new_src_cloud, downsample);
 //   Voxel_grid_downsample(des_cloud, new_des_cloud, downsample);

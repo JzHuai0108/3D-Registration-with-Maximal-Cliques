@@ -1,11 +1,12 @@
 import numpy as np
 import torch
 import time
-import igraph
+from igraph import *
 import os
 import open3d as o3d
+from mise.pointcloud import estimate_normal
 
-os.environ['CUDA_VISIBLE_DEVICES'] = "0"
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 cuda = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -89,8 +90,7 @@ def rigid_transform_3d(A, B, weights=None, weight_threshold=0):
     return integrate_trans(R, t)
 
 
-def post_refinement(initial_trans, src_kpts, tgt_kpts, iters, weights=None):
-    inlier_threshold = 0.1
+def post_refinement(initial_trans, src_kpts, tgt_kpts, iters, inlier_threshold = 0.1, weights=None):
     pre_inlier_count = 0
     for i in range(iters):
         pred_tgt = transform(src_kpts, initial_trans)
@@ -106,11 +106,6 @@ def post_refinement(initial_trans, src_kpts, tgt_kpts, iters, weights=None):
             weights=1 / (1 + (L2_dis / inlier_threshold) ** 2)[:, pred_inlier]
         )
     return initial_trans
-
-
-def estimate_normal(pcd, radius=0.06, max_nn=30):
-    pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=radius, max_nn=max_nn))
-
 
 def transformation_error(pred_trans, gt_trans):
     pred_R = pred_trans[:3, :3]
@@ -134,20 +129,56 @@ def visualization(src_pcd, tgt_pcd, pred_trans):
         estimate_normal(src_pcd)
         estimate_normal(tgt_pcd)
     src_pcd.paint_uniform_color([1, 0.706, 0])
+    src_box = src_pcd.get_oriented_bounding_box()
+    src_box.color = (0 ,1, 0)
     tgt_pcd.paint_uniform_color([0, 0.651, 0.929])
-    o3d.visualization.draw_geometries_with_key_callbacks([src_pcd, tgt_pcd], key_to_callback)
-    src_pcd.transform(pred_trans)
-    o3d.visualization.draw_geometries_with_key_callbacks([src_pcd, tgt_pcd], key_to_callback)
+    tgt_box = tgt_pcd.get_oriented_bounding_box()
+    tgt_box.color = (0, 1, 0)
 
-def extract_fpfh_features(keypts, downsample):
+    o3d.visualization.draw_geometries_with_key_callbacks([src_pcd, tgt_pcd, src_box, tgt_box], key_to_callback)
+    src_pcd.transform(pred_trans)
+    src_box = src_pcd.get_oriented_bounding_box()
+    src_box.color = (1, 0, 0)
+    o3d.visualization.draw_geometries_with_key_callbacks([src_pcd, tgt_pcd, src_box, tgt_box], key_to_callback)
+
+def extract_fpfh_features(pcd, downsample):
+    keypts = pcd.voxel_down_sample(downsample)
     keypts.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=downsample * 2, max_nn=30))
     features = o3d.pipelines.registration.compute_fpfh_feature(keypts, o3d.geometry.KDTreeSearchParamHybrid(
         radius=downsample * 5, max_nn=100))
     features = np.array(features.data).T
     features = features / (np.linalg.norm(features, axis=1, keepdims=True) + 1e-6)
-    return features
+    return keypts, features
+
+def extract_fcgf_features(pcd, downsample):
+    from mise.fcgf import ResUNetBN2C as FCGF
+    from mise.cal_fcgf import extract_features
+    fcgf_model = FCGF(
+        1,
+        32,
+        bn_momentum=0.05,
+        conv1_kernel_size=7,
+        normalize_feature=True
+    ).cuda()
+    checkpoints = torch.load('mise/ResUNetBN2C-feat32-3dmatch-v0.05.pth')
+    # # 3DMatch: http://node2.chrischoy.org/data/projects/DGR/ResUNetBN2C-feat32-3dmatch-v0.05.pth
+    # # KITTI: http://node2.chrischoy.org/data/projects/DGR/ResUNetBN2C-feat32-kitti-v0.3.pth
+    fcgf_model.load_state_dict(checkpoints['state_dict'])
+    fcgf_model.eval()
+
+    xyz_down, features = extract_features(
+        fcgf_model,
+        xyz=np.array(pcd.points),
+        rgb=None,
+        normal=None,
+        voxel_size=downsample,
+        skip_check=True,
+    )
+    return xyz_down.astype(np.float32), features.detach().cpu().numpy()
+
 
 def test(folder):
+    desc = "fcgf"
     GTmat_path = folder + '/GTmat.txt' # ground truth transformation for calculate RE TE
     src_pcd_path = folder + '/source.ply'
     tgt_pcd_path = folder + '/target.ply'
@@ -155,27 +186,35 @@ def test(folder):
     src_pcd = o3d.io.read_point_cloud(src_pcd_path)
     tgt_pcd = o3d.io.read_point_cloud(tgt_pcd_path)
     # extract features (FPFH for example)
-    src_kpts = src_pcd.voxel_down_sample(0.05)
-    tgt_kpts = tgt_pcd.voxel_down_sample(0.05)
-    src_desc = extract_fpfh_features(src_kpts, 0.05)
-    tgt_desc = extract_fpfh_features(tgt_kpts, 0.05)
+    if desc == "fpfh":
+        src_kpts, src_desc = extract_fpfh_features(src_pcd, 0.05)
+        tgt_kpts, tgt_desc = extract_fpfh_features(tgt_pcd, 0.05)
+    else:
+        src_pts, src_desc = extract_fcgf_features(src_pcd, 0.05)
+        tgt_pts, tgt_desc = extract_fcgf_features(tgt_pcd, 0.05)
+
     distance = np.sqrt(2 - 2 * (src_desc @ tgt_desc.T) + 1e-6)
     source_idx = np.argmin(distance, axis=1)  # for each row save the index of minimun
     # feature matching
     corr = np.concatenate([np.arange(source_idx.shape[0])[:, None], source_idx[:, None]],
                           axis=-1)  # n to 1
 
-    src_pts = np.array(src_kpts.points, dtype=np.float32)[corr[:,0]]
-    tgt_pts = np.array(tgt_kpts.points, dtype=np.float32)[corr[:,1]]
+    if desc == "fpfh":
+        src_pts = np.array(src_kpts.points, dtype=np.float32)[corr[:,0]]
+        tgt_pts = np.array(tgt_kpts.points, dtype=np.float32)[corr[:,1]]
+    else:
+        src_pts = src_pts[corr[:, 0]]
+        tgt_pts = tgt_pts[corr[:, 1]]
     src_pts = torch.from_numpy(src_pts).cuda()
     tgt_pts = torch.from_numpy(tgt_pts).cuda()
     GTmat = torch.from_numpy(GTmat).cuda()
     t1 = time.perf_counter()
     # graph construction
+    inlier_threshold = 0.1
     src_dist = ((src_pts[:, None, :] - src_pts[None, :, :]) ** 2).sum(-1) ** 0.5
     tgt_dist = ((tgt_pts[:, None, :] - tgt_pts[None, :, :]) ** 2).sum(-1) ** 0.5
     cross_dis = torch.abs(src_dist - tgt_dist)
-    FCG = torch.clamp(1 - cross_dis ** 2 / 0.1 ** 2, min=0)
+    FCG = torch.clamp(1 - cross_dis ** 2 / inlier_threshold ** 2, min=0)
     FCG = FCG - torch.diag_embed(torch.diag(FCG))
     FCG[FCG < 0.99] = 0
     SCG = torch.matmul(FCG, FCG) * FCG
@@ -184,10 +223,11 @@ def test(folder):
     # search cliques
     SCG = SCG.cpu().numpy()
     t1 = time.perf_counter()
-    graph = igraph.Graph.Adjacency((SCG > 0).tolist())
+    graph = Graph.Adjacency((SCG > 0).tolist())
     graph.es['weight'] = SCG[SCG.nonzero()]
     graph.vs['label'] = range(0, corr.shape[0])
     graph.to_undirected()
+
     macs = graph.maximal_cliques(min=3)
     t2 = time.perf_counter()
     print(f'Search maximal cliques: %.2fms' % ((t2 - t1) * 1000))
@@ -214,7 +254,11 @@ def test(folder):
                     max_size = len(mac) > max_size and len(mac) or max_size
 
     filtered_clique_ind = list(set(clique_ind_of_node))
-    filtered_clique_ind.remove(-1)
+    try:
+        filtered_clique_ind.remove(-1)
+    except:
+        pass
+        
     print(f'After filtered: %d' % len(filtered_clique_ind))
     group = []
     for s in range(3, max_size + 1):
@@ -226,6 +270,8 @@ def test(folder):
     tensor_list_A = []
     tensor_list_B = []
     for i in range(len(group)):
+        if len(group[i]) == 0:
+            continue
         batch_A = src_pts[list(macs[group[i][0]])][None]
         batch_B = tgt_pts[list(macs[group[i][0]])][None]
         if len(group) == 1:
@@ -239,7 +285,7 @@ def test(folder):
         tensor_list_A.append(batch_A)
         tensor_list_B.append(batch_B)
 
-    inlier_threshold = 0.1
+    
     max_score = 0
     final_trans = torch.eye(4)
     for i in range(len(tensor_list_A)):
@@ -256,7 +302,8 @@ def test(folder):
 
     # RE TE
     re, te = transformation_error(final_trans, GTmat)
-    final_trans1 = post_refinement(initial_trans=final_trans[None], src_kpts=src_pts[None], tgt_kpts=tgt_pts[None], iters=20)
+    final_trans1 = post_refinement(final_trans[None], src_pts[None], tgt_pts[None], 20, inlier_threshold)
+
     re1, te1 = transformation_error(final_trans1[0], GTmat)
     if re1 <= re and te1 <= te:
         final_trans = final_trans1[0]
