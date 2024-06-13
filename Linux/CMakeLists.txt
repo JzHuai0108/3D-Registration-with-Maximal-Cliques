@@ -11,12 +11,6 @@ if(OPENMP_FOUND)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
-find_package(catkin  REQUIRED COMPONENTS
-  roscpp
-  rosbag
-)
-
-
 #include_directories(
 #        /opt/intel/oneapi/mkl/2023.0.0/include/
 #        include  #-------即/usr/local/include路径
@@ -29,12 +23,15 @@ include_directories(${catkin_INCLUDE_DIRS} )
 link_directories(${PCL_LIBRARY_DIRS} ${catkin_LIBRARIES})
 
 add_definitions(${PCL_DEFINITIONS})
-add_executable(MAC main.cpp desc_dec.cpp funcs.cpp PCR.cpp registration.cpp visualization.cpp Eva.h)
-target_link_libraries(MAC ${PCL_LIBRARIES} igraph::igraph)
-
 add_library(maclib STATIC desc_dec.cpp funcs.cpp PCR.cpp registration.cpp visualization.cpp Eva.h)
 target_link_libraries(maclib ${PCL_LIBRARIES} igraph::igraph)
 
-add_executable(align_coloradar align_coloradar_seqs.cpp)
-target_link_libraries(align_coloradar ${catkin_LIBRARIES} maclib)
+add_executable(MAC main.cpp)
+target_link_libraries(MAC maclib)
 
+# find_package(catkin  REQUIRED COMPONENTS
+#   roscpp
+#   rosbag
+# )
+# add_executable(align_coloradar align_coloradar_seqs.cpp)
+# target_link_libraries(align_coloradar ${catkin_LIBRARIES} maclib)

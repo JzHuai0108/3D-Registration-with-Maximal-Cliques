@@ -10,6 +10,7 @@
 #include <pcl/features/shot.h>
 #include <pcl/registration/transformation_estimation_svd.h>
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/uniform_sampling.h>
 #include <pcl/surface/gp3.h>
 #include <pcl/surface/mls.h>
 #include <pcl/visualization/pcl_visualizer.h>
@@ -193,9 +194,11 @@ int random_downsample(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, pcl::PointClou
 
 int Voxel_grid_downsample(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, pcl::PointCloud<pcl::PointXYZ>::Ptr& new_cloud,
                       float leaf_size) {
-    pcl::VoxelGrid<pcl::PointXYZ> sor;
+    // pcl::VoxelGrid<pcl::PointXYZ> sor;
+	pcl::UniformSampling<pcl::PointXYZ> sor;
     sor.setInputCloud(cloud);
-    sor.setLeafSize(leaf_size, leaf_size, leaf_size);
+	sor.setRadiusSearch(leaf_size);
+    // sor.setLeafSize(leaf_size, leaf_size, leaf_size);
     sor.filter(*new_cloud);
     return 0;
 }

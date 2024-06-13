@@ -1033,7 +1033,8 @@ bool registration(const string &name, string src_pointcloud, string des_pointclo
 	}
 }
 
-bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>& correspondence, vector<double>& ov_corr_label, string folderPath, float resolution, float cmp_thresh) {
+bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>& correspondence, 
+        vector<double>& ov_corr_label, string folderPath, float resolution, float cmp_thresh, bool verbose) {
     bool sc2 = true;
     bool GT_cmp_mode = false;
     int max_est_num = INT_MAX;
@@ -1057,7 +1058,8 @@ bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>&
     end = std::chrono::system_clock::now();
     elapsed_time = end - start;
     total_time += elapsed_time;
-    cout << " graph construction: " << elapsed_time.count() << endl;
+    if (verbose)
+        cout << " graph construction: " << elapsed_time.count() << endl;
     if (Graph.norm() == 0) {
         return false;
     }
@@ -1129,7 +1131,8 @@ bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>&
     }
     end = std::chrono::system_clock::now();
     elapsed_time = end - start;
-    cout << " coefficient computation: " << elapsed_time.count() << endl;
+    if (verbose)
+        cout << " coefficient computation: " << elapsed_time.count() << endl;
     double average_factor = 0;
     for (size_t i = 0; i < cluster_factor.size(); i++)
     {
@@ -1161,8 +1164,8 @@ bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>&
         OTSU = OTSU_thresh(cluster_coefficients);
     }
     double cluster_threshold = min(OTSU, min(average_factor, total_factor));
-
-    cout << cluster_threshold << "->min(" << average_factor << " " << total_factor << " " << OTSU << ")" << endl;
+    if (verbose)
+        cout << cluster_threshold << "->min(" << average_factor << " " << total_factor << " " << OTSU << ")" << endl;
     double weight_thresh = cluster_threshold;
     if (add_overlap)
     {
@@ -1247,7 +1250,8 @@ bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>&
     if (clique_num == 0) {
         cout << " NO CLIQUES! " << endl;
     }
-    cout << " clique computation: " << elapsed_time.count() << endl;
+    if (verbose)
+        cout << " clique computation: " << elapsed_time.count() << endl;
 
     //数据清理
     igraph_destroy(&g);
@@ -1265,7 +1269,8 @@ bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>&
     end = std::chrono::system_clock::now();
     elapsed_time = end - start;
     total_time += elapsed_time;
-    cout << " clique selection: " << elapsed_time.count() << endl;
+    if (verbose)
+        cout << " clique selection: " << elapsed_time.count() << endl;
 
     PointCloudPtr src_corr_pts(new pcl::PointCloud<pcl::PointXYZ>);
     PointCloudPtr des_corr_pts(new pcl::PointCloud<pcl::PointXYZ>);
@@ -1321,25 +1326,29 @@ bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>&
     end = std::chrono::system_clock::now();
     elapsed_time = end - start;
     total_time += elapsed_time;
-    cout << " hypothesis generation & evaluation: " << elapsed_time.count() << endl;
+    if (verbose)
+        cout << " hypothesis generation & evaluation: " << elapsed_time.count() << endl;
     //释放内存空间
     igraph_vector_ptr_destroy(&cliques);
-    cout << total_estimate << " : " << clique_num << endl;
+    if (verbose)
+        cout << total_estimate << " : " << clique_num << endl;
     Eigen::MatrixXd tmp_best;
 
     tmp_best = best_est;
     post_refinement(correspondence, src_corr_pts, des_corr_pts, best_est, best_score, inlier_thresh, 20, "MAE");
 
-    cout << selected.size() << " " << best_score << endl;
+    if (verbose) {
+        cout << selected.size() << " " << best_score << endl;
 
-    for (int i = 0; i < selected.size(); i++)
-    {
-        cout << selected[i].score << " ";
+        for (int i = 0; i < selected.size(); i++)
+        {
+            cout << selected[i].score << " ";
+        }
+        cout << endl;
+        cout << best_est << endl;
+        Corres_Viewer_Score(src, des, selected, resolution, (int)selected.size());
+        visualization(src, des, best_est, resolution);
     }
-    cout << endl;
-    cout << best_est << endl;
-    // Corres_Viewer_Score(src, des, selected, resolution, (int)selected.size());
-    // visualization(src, des, best_est, resolution);
 
     //保存匹配到txt
     savetxt(correspondence, folderPath + "/corr.txt");

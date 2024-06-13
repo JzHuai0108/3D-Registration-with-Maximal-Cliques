@@ -139,7 +139,9 @@ vector<string> analyse(const string& name, const string& result_scene,
 }
 
 void demo(const std::string& fixed_pcd, const std::string& moving_pcd,
+          const float fpfh_radius_factor,
           const std::string& output_path) {
+  bool verbose = true;
   PointCloudPtr src_cloud(new pcl::PointCloud<pcl::PointXYZ>);
   PointCloudPtr des_cloud(new pcl::PointCloud<pcl::PointXYZ>);
   PointCloudPtr new_src_cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -156,23 +158,24 @@ void demo(const std::string& fixed_pcd, const std::string& moving_pcd,
   float des_resolution = MeshResolution_mr_compute(des_cloud);
   float resolution = (src_resolution + des_resolution) / 2;
 
-  std::cout << "Downsampling..." << std::endl; 
+  std::cout << "Downsampling..." << std::endl;
   float downsample = 5 * resolution;
-  double ratio = std::min(0.06, (double)80000 / (double)(src_cloud->size() + des_cloud->size())); 
-  std::cout << "average resolution: " << resolution << " downsample " << downsample 
-  			<< " ratio " << ratio << std::endl; 
-  random_downsample(src_cloud, new_src_cloud, int(src_cloud->size() * ratio)); 
-  random_downsample(des_cloud, new_des_cloud, int(des_cloud->size() * ratio));
+  std::cout << "Average resolution: " << resolution << ", src resolution " << src_resolution
+            << " dest resolution " << des_resolution << ". Downsample " << downsample
+  			    << std::endl;
+  // random_downsample(src_cloud, new_src_cloud, int(src_cloud->size() * ratio));
+  // random_downsample(des_cloud, new_des_cloud, int(des_cloud->size() * ratio));
 
-//   float downsample = 5 * resolution;
-//   Voxel_grid_downsample(src_cloud, new_src_cloud, downsample);
-//   Voxel_grid_downsample(des_cloud, new_des_cloud, downsample);
+  Voxel_grid_downsample(src_cloud, new_src_cloud, downsample);
+  Voxel_grid_downsample(des_cloud, new_des_cloud, downsample);
   std::cout << "After downsampling, src cloud size " << new_src_cloud->size()
 			<< " dest cloud size " << new_des_cloud->size() << std::endl;
-  std::cout << "Computing FPFH feature..." << std::endl;
+  std::cout << "Computing FPFH feature with factor " << fpfh_radius_factor
+            << " x resolution " << resolution << std::endl;
   vector<vector<float>> src_feature, des_feature;
-  FPFH_descriptor(new_src_cloud, downsample * 5, src_feature);
-  FPFH_descriptor(new_des_cloud, downsample * 5, des_feature);
+  float fpfh_radius = fpfh_radius_factor * resolution;
+  FPFH_descriptor(new_src_cloud, fpfh_radius, src_feature);
+  FPFH_descriptor(new_des_cloud, fpfh_radius, des_feature);
   std::cout << "Feature matching..." << std::endl;
   vector<Corre_3DMatch> correspondence;
   feature_matching(new_src_cloud, new_des_cloud, src_feature, des_feature,
@@ -184,7 +187,7 @@ void demo(const std::string& fixed_pcd, const std::string& moving_pcd,
   folderPath = output_path;
   cout << "Start registration with output path " << folderPath << endl;
   registration(src_cloud, des_cloud, correspondence, ov_lable, folderPath,
-               resolution, 0.99);
+               resolution, 0.99, verbose);
   cout << "Registration done!" << endl;
   // clear data
   src_cloud.reset(new pcl::PointCloud<pcl::PointXYZ>);
@@ -199,7 +202,6 @@ void demo(const std::string& fixed_pcd, const std::string& moving_pcd,
   correspondence.shrink_to_fit();
   ov_lable.clear();
   ov_lable.shrink_to_fit();
-  exit(0);
 }
 
 void usage() {
@@ -218,6 +220,7 @@ void usage() {
   cout << "\t\t--no_logs\tforbid generation of log files." << endl;
   cout << "\t\t--fixed_pcd\tfixed point cloud path." << endl;
   cout << "\t\t--moving_pcd\tmoving point cloud path." << endl;
+  cout << "\t\t--fpfh_radius_factor\tfpfh radius factor to multiply with the average resolution." << endl;
 };
 
 int main(int argc, char** argv) {
@@ -230,8 +233,9 @@ int main(int argc, char** argv) {
   string datasetPath;
   string datasetName;
   string descriptor;
-  string fixed_pcd_path = "demo/src.pcd";
-  string moving_pcd_path = "demo/des.pcd";
+  string moving_pcd_path = "demo/src.pcd";
+  string fixed_pcd_path = "demo/des.pcd";
+  float fpfh_radius_factor = 50;
   //////////////////////////////////////////////////////////////////
   int opt;
   int digit_opind = 0;
@@ -247,6 +251,7 @@ int main(int argc, char** argv) {
       {"demo", optional_argument, NULL, 'm'},
       {"fixed_pcd", optional_argument, NULL, 'f'},
       {"moving_pcd", optional_argument, NULL, 'v'},
+      {"fpfh_radius_factor", optional_argument, NULL, 'r'},
       {NULL, 0, 0, '\0'}};
 
   while ((opt = getopt_long(argc, argv, "", long_options, &option_index)) !=
@@ -274,8 +279,11 @@ int main(int argc, char** argv) {
         id = atoi(optarg);
         break;
       case 'm':
-        demo(fixed_pcd_path, moving_pcd_path, resultPath);
+        demo(fixed_pcd_path, moving_pcd_path, fpfh_radius_factor, resultPath);
         exit(0);
+      case 'r':
+        fpfh_radius_factor = atof(optarg);
+        break;
       case 'f':
         fixed_pcd_path = optarg;
         break;
