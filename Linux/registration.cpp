@@ -1034,7 +1034,8 @@ bool registration(const string &name, string src_pointcloud, string des_pointclo
 }
 
 bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>& correspondence, 
-        vector<double>& ov_corr_label, string folderPath, float resolution, float cmp_thresh, bool verbose) {
+        vector<double>& ov_corr_label, string folderPath, float resolution, float cmp_thresh,
+        Eigen::Matrix4d &Wt_T_Ws, bool verbose) {
     bool sc2 = true;
     bool GT_cmp_mode = false;
     int max_est_num = INT_MAX;
@@ -1346,14 +1347,15 @@ bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>&
         }
         cout << endl;
         cout << best_est << endl;
-        Corres_Viewer_Score(src, des, selected, resolution, (int)selected.size());
-        visualization(src, des, best_est, resolution);
+        // Corres_Viewer_Score(src, des, selected, resolution, (int)selected.size());
+        // visualization(src, des, best_est, resolution);
     }
 
     //保存匹配到txt
     savetxt(correspondence, folderPath + "/corr.txt");
     savetxt(selected, folderPath + "/selected.txt");
     string save_est = folderPath + "/Wt_T_Ws.txt";
+    Wt_T_Ws = best_est;
     ofstream outfile(save_est, ios::trunc);
     outfile.setf(ios::fixed, ios::floatfield);
     outfile << setprecision(10) << best_est(0, 0) << " " << best_est(0, 1) << " " << best_est(0, 2) << " " << best_est(0, 3) << 

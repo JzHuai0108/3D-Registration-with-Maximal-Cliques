@@ -186,8 +186,9 @@ void demo(const std::string& fixed_pcd, const std::string& moving_pcd,
 
   folderPath = output_path;
   cout << "Start registration with output path " << folderPath << endl;
+  Eigen::Matrix4d Wt_T_Ws;
   registration(src_cloud, des_cloud, correspondence, ov_lable, folderPath,
-               resolution, 0.99, verbose);
+               resolution, 0.99, Wt_T_Ws, verbose);
   cout << "Registration done!" << endl;
   // clear data
   src_cloud.reset(new pcl::PointCloud<pcl::PointXYZ>);

@@ -188,7 +188,7 @@ void print_and_destroy_cliques(igraph_vector_ptr_t* cliques);
 void find_largest_clique_of_node(Eigen::MatrixXf& Graph, igraph_vector_ptr_t* cliques, vector<Corre_3DMatch>& correspondence, node_cliques* result, vector<int>& remain, int num_node, int est_num, string descriptor);
 void post_refinement(vector<Corre_3DMatch>& correspondence, PointCloudPtr& src_corr_pts, PointCloudPtr& des_corr_pts, Eigen::Matrix4d& initial, double& best_score, double inlier_thresh, int iterations, const string &metric);
 bool registration(const string &name,string src_pointcloud, string des_pointcloud,const string &corr_path, const string &label_path, const string &ov_label, const string &gt_mat, const string &folderPath, double& RE, double& TE, double& inlier_num, double& total_num, double& inlier_ratio, double& success_num, double& total_estimate, const string &descriptor, vector<double>& time_consumption);
-bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>& correspondence, vector<double>& ov_corr_label, string folderPath, float resolution, float cmp_thresh, bool verbose);
+bool registration(PointCloudPtr& src, PointCloudPtr& des, vector<Corre_3DMatch>& correspondence, vector<double>& ov_corr_label, string folderPath, float resolution, float cmp_thresh, Eigen::Matrix4d& Wt_T_Ws, bool verbose);
 bool coloradar_registration(PointCloudPtr &src, PointCloudPtr &des, vector<Corre_3DMatch> &correspondence, vector<double> &ov_corr_label,
 							Eigen::Matrix4d &transform, float resolution, float cmp_thresh, double &best_score);
 void GUO_ICP(PointCloudPtr& cloud_source, PointCloudPtr& cloud_target, float& mr, int& Max_iter_Num, Eigen::Matrix4f& Mat_ICP);
