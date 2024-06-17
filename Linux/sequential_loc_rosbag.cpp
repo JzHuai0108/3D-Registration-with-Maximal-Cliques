@@ -276,7 +276,11 @@ public:
         Eigen::Vector3d t = lidar_pose_mac.translation();
         mac_stream << lidar_stamp.sec << "." << std::setfill('0') << std::setw(9) << lidar_stamp.nsec << " "
                    << std::fixed << std::setprecision(6) << t[0] << " " << t[1] << " " << t[2] << " "
-                   << std::setprecision(9) << q.x() << " " << q.y() << " " << q.z() << " " << q.w() << std::endl;
+                   << std::setprecision(9) << q.x() << " " << q.y() << " " << q.z() << " " << q.w();
+        for (size_t i = 0; i < loaded_tls_scanids.size(); ++i) {
+            mac_stream << " " << loaded_tls_scanids[i];
+        }
+        mac_stream << std::endl;
 
         Eigen::Quaterniond q_gicp(lidar_pose_gicp.linear());
         Eigen::Vector3d t_gicp = lidar_pose_gicp.translation();
@@ -302,18 +306,30 @@ int main(int argc, char** argv) {
 
     Localizer localizer(argv[2], argv[3], argv[4]);
     bool verbose = true;
-    bool use_mac = false; // use max clique or pgo result to initialize gicp.
+    bool use_mac = true; // use max clique or pgo result to initialize gicp.
+    int step = 399; // use a large step to check the result of max clique at different time points.
+    // TODO(jhuai): We find that the max clique also fails miserably given pairs of lidar and TLS scans at random positions.
+    int count = 1;
     for (const rosbag::MessageInstance& m : view) {
+        if (count % step == 0) {
+            std::cout << "Processing message " << count << std::endl;
+        } else {
+            count++;
+            continue;
+        }
         sensor_msgs::PointCloud2::ConstPtr cloud = m.instantiate<sensor_msgs::PointCloud2>();
+        // TODO(jhuai): use a sliding window to accumulate lidar scans.
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_xyz = localizer.toPointXYZ(cloud);
         Eigen::Isometry3d tls_T_lidar_init = localizer.getLidarPose(cloud->header.stamp);
         pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_tls = localizer.loadNearTlsScans(tls_T_lidar_init);
         if (use_mac) {
-            tls_T_lidar_init = localizer.registerLidarScanToTls(cloud_xyz, cloud_tls, 50, verbose);
+            float fpfh_radius_factor = 100;
+            tls_T_lidar_init = localizer.registerLidarScanToTls(cloud_xyz, cloud_tls, fpfh_radius_factor, verbose);
         }
-        int num_gicp_iter = 5;
+        int num_gicp_iter = 10;
         Eigen::Isometry3d tls_T_lidar_gicp = localizer.registerLidarScanToTlsGicp(cloud_xyz, cloud_tls, tls_T_lidar_init, num_gicp_iter);
         localizer.saveRegistrationResult(cloud->header.stamp, tls_T_lidar_init, tls_T_lidar_gicp);
+        count++;
     }
     bag.close();
 }
